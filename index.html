@@ -1,1 +1,2660 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+  :root {
+    --sidebar-width: 220px;
+  }
+
+  /* ── Cutoff Specific Theme Colors ── */
+  .cutoff-blue td        { background: rgba(56, 189, 248, 0.15) !important; color: #7dd3fc !important; }
+  .cutoff-blue:hover td  { background: rgba(56, 189, 248, 0.28) !important; }
+  .cutoff-purple td      { background: rgba(167, 139, 250, 0.15) !important; color: #c4b5fd !important; }
+  .cutoff-purple:hover td{ background: rgba(167, 139, 250, 0.28) !important; }
+  .cutoff-teal td        { background: rgba(45, 212, 191, 0.15) !important; color: #5eead4 !important; }
+  .cutoff-teal:hover td  { background: rgba(45, 212, 191, 0.28) !important; }
+  .cutoff-amber td       { background: rgba(251, 191, 36, 0.15) !important; color: #fde047 !important; }
+  .cutoff-amber:hover td { background: rgba(251, 191, 36, 0.28) !important; }
+  .cutoff-pink td        { background: rgba(244, 114, 182, 0.15) !important; color: #f472b6 !important; }
+  .cutoff-pink:hover td  { background: rgba(244, 114, 182, 0.28) !important; }
+  .cutoff-indigo td      { background: rgba(129, 140, 248, 0.15) !important; color: #a5b4fc !important; }
+  .cutoff-indigo:hover td{ background: rgba(129, 140, 248, 0.28) !important; }
+  .cutoff-emerald td     { background: rgba(52, 211, 153, 0.15) !important; color: #6ee7b7 !important; }
+  .cutoff-emerald:hover td{ background: rgba(52, 211, 153, 0.28) !important; }
+
+  .clickable-card {
+    cursor: pointer;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .clickable-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    border-color: rgba(56, 189, 248, 0.5);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(56, 189, 248, 0.2);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: #eef1fb;
+    position: relative;
+    background: #0a0e1a;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: -10%; z-index: -2;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(56,189,248,0.35), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(139,92,246,0.30), transparent 42%),
+      radial-gradient(circle at 75% 80%, rgba(45,212,191,0.25), transparent 45%),
+      radial-gradient(circle at 20% 85%, rgba(56,189,248,0.22), transparent 40%);
+    filter: blur(60px);
+    animation: drift 22s ease-in-out infinite alternate;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: linear-gradient(180deg, rgba(8,11,20,0.4), rgba(8,11,20,0.85));
+  }
+  @keyframes drift { 0%{transform:translate(0,0) scale(1)} 100%{transform:translate(-3%,2%) scale(1.05)} }
+
+  .glass {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  /* ── App Shell ── */
+  .app-shell { display: flex; min-height: 100vh; width: 100%; overflow-x: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    background: rgba(10, 14, 26, 0.55);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    padding: 16px 14px 14px 14px;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100vh;
+    box-sizing: border-box;
+    display: grid !important;
+    grid-template-rows: auto 1fr auto !important;
+    gap: 8px;
+    overflow: hidden !important;
+    transition: width 0.25s ease, padding 0.25s ease;
+    z-index: 500;
+  }
+
+  /* ── Drag Resizer Handle ── */
+  .sidebar-resizer {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 600;
+    background: transparent;
+    transition: background 0.2s ease;
+  }
+  .sidebar-resizer:hover,
+  body.is-resizing .sidebar-resizer {
+    background: rgba(56, 189, 248, 0.6);
+  }
+  body.is-resizing {
+    user-select: none;
+    cursor: col-resize;
+  }
+  body.is-resizing .sidebar,
+  body.is-resizing .main {
+    transition: none !important;
+  }
+
+  /* ── Fixed Brand Header ── */
+  .sidebar-brand {
+    grid-row: 1 / 2;
+    font-size: 15px; 
+    font-weight: 700; 
+    padding: 6px 10px 12px;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, #38bdf8, #a78bfa);
+    -webkit-background-clip: text; 
+    background-clip: text; 
+    color: transparent;
+  }
+
+  /* ── Scrollable Navigation Area Only ── */
+  .sidebar-nav-container {
+    grid-row: 2 / 3;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding-right: 4px;
+  }
+
+  /* ── Fixed Bottom Timer ── */
+  .sidebar-status {
+    grid-row: 3 / 4;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 14px 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 11px 12px; font-size: 13.5px; font-weight: 500; color: #8a96b8;
+    cursor: pointer; border-radius: 10px; background: none; border: none;
+    font-family: 'Inter', sans-serif; text-align: left;
+    transition: background 0.15s, color 0.15s; margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: #dbe4ff; }
+  .nav-item.active { background: rgba(56,189,248,0.14); color: #38bdf8; }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+  .nav-group-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+    padding: 11px 12px; font-size: 13.5px; font-weight: 500; color: #8a96b8;
+    cursor: pointer; border-radius: 10px; background: none; border: none;
+    font-family: 'Inter', sans-serif; text-align: left;
+    transition: background 0.15s, color 0.15s; margin-bottom: 2px;
+  }
+  .nav-group-header:hover { background: rgba(255,255,255,0.06); color: #dbe4ff; }
+  .nav-group-header.open { color: #dbe4ff; }
+  .nav-group-header .chevron { transition: transform 0.2s; font-size: 10px; }
+  .nav-group-header.open .chevron { transform: rotate(90deg); }
+  .nav-group-left { display: flex; align-items: center; gap: 10px; }
+
+  .nav-sub { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 10px; }
+  .nav-sub.open { max-height: 2000px; }
+  .nav-sub-item {
+    display: block; width: 100%; padding: 9px 12px 9px 30px; font-size: 13px;
+    color: #7885ab; cursor: pointer; border-radius: 9px; background: none; border: none;
+    font-family: 'Inter', sans-serif; text-align: left;
+    transition: background 0.15s, color 0.15s; margin-bottom: 2px; position: relative;
+  }
+  .nav-sub-item::before { content: ''; position: absolute; left: 16px; top: 50%; width: 5px; height: 5px; border-radius: 50%; background: currentColor; transform: translateY(-50%); opacity: 0.5; }
+  .nav-sub-item:hover { background: rgba(255,255,255,0.06); color: #dbe4ff; }
+  .nav-sub-item.active { background: rgba(56,189,248,0.14); color: #38bdf8; }
+
+  .sidebar-status-row { display: flex; align-items: center; gap: 8px; }
+  .countdown-ring { position: relative; width: 34px; height: 34px; flex-shrink: 0; }
+  .countdown-ring svg { transform: rotate(-90deg); }
+  .countdown-ring circle.bg { fill: none; stroke: rgba(255,255,255,0.12); stroke-width: 3; }
+  .countdown-ring circle.progress { fill: none; stroke: #38bdf8; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 91; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; filter: drop-shadow(0 0 4px rgba(56,189,248,0.6)); }
+  .countdown-number { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 10px; font-weight: 600; color: #cdd6ee; }
+  .refresh-status { font-size: 10.5px; color: #5c6890; line-height: 1.4; }
+  .pulse { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #38bdf8; margin-right: 4px; box-shadow: 0 0 6px #38bdf8; animation: pulse 2s ease-in-out infinite; vertical-align: middle; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+  /* ── Main ── */
+  .main {
+    flex: 1;
+    min-width: 0;
+    width: calc(100% - var(--sidebar-width));
+    margin-left: var(--sidebar-width);
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    transition: margin-left 0.25s ease, width 0.25s ease;
+  }
+  .page {
+    display: none;
+    padding: 32px 32px 60px;
+    width: 100%;
+    height: 100vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  /* ── Custom Cyan Scrollbars ── */
+  .page::-webkit-scrollbar,
+  .sidebar-nav-container::-webkit-scrollbar {
+    width: 3px !important;
+    display: block !important;
+  }
+  .page::-webkit-scrollbar-track,
+  .sidebar-nav-container::-webkit-scrollbar-track {
+    background: rgba(10, 14, 26, 0.1) !important;
+    border-radius: 4px;
+  }
+  .page::-webkit-scrollbar-thumb,
+  .sidebar-nav-container::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.4) !important;
+    border-radius: 4px;
+    transition: width 0.2s, background 0.2s;
+  }
+  .page::-webkit-scrollbar-thumb:hover,
+  .sidebar-nav-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 189, 248, 0.8) !important;
+  }
+  .page::-webkit-scrollbar:hover,
+  .sidebar-nav-container::-webkit-scrollbar:hover {
+    width: 5px !important;
+  }
+  .page, .sidebar-nav-container {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(56, 189, 248, 0.4) transparent !important;
+  }
+
+  .page.active { display: block; }
+  .page-title {
+    font-size: 22px; font-weight: 700; margin-bottom: 6px;
+    background: linear-gradient(90deg, #eef1fb, #b8c4e6);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .page-sub { font-size: 13px; color: #7885ab; margin-bottom: 22px; }
+  .section-label {
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #5c6890; margin: 30px 0 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+
+  /* ── Cards ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 14px; }
+  .card { border-radius: 18px; padding: 20px 18px; position: relative; overflow: hidden; transition: transform 0.25s ease, border-color 0.25s ease; }
+  .card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.26); }
+  .card::before { content: ''; position: absolute; top:0;left:0;right:0; height: 2px; background: var(--accent,#38bdf8); box-shadow: 0 0 12px var(--accent,#38bdf8); }
+  .card::after  { content: ''; position: absolute; top:-40%;right:-30%; width:60%;height:100%; background: radial-gradient(circle, var(--accent,#38bdf8) 0%, transparent 70%); opacity: 0.12; pointer-events: none; }
+  .card.green  { --accent:#34d399; } .card.amber  { --accent:#fbbf24; }
+  .card.purple { --accent:#a78bfa; } .card.blue   { --accent:#38bdf8; }
+  .card.red    { --accent:#f87171; } .card.teal   { --accent:#2dd4bf; }
+  .card-label { font-size: 11px; font-weight: 500; color: #8a96b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .card-value { font-size: 32px; font-weight: 700; color: #fff; line-height: 1; letter-spacing: -0.02em; text-shadow: 0 0 20px rgba(255,255,255,0.15); }
+  .card-sub { font-size: 10.5px; color: #4c5878; margin-top: 8px; font-family: 'SF Mono', monospace; }
+  .hero-single { max-width: 320px; }
+  .hero-single .card-value { font-size: 42px; }
+
+  /* ── FTE ── */
+  .fte-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 14px; }
+  .fte-card { border-radius: 18px; padding: 18px; position: relative; overflow: hidden; }
+  .fte-card::before { content: ''; position: absolute; top:0;left:0;right:0; height: 2px; background: var(--fc,#38bdf8); box-shadow: 0 0 12px var(--fc,#38bdf8); }
+  .fte-card.day    { --fc:#34d399; } .fte-card.night  { --fc:#a78bfa; }
+  .fte-card.weekoff{ --fc:#fbbf24; } .fte-card.leave  { --fc:#f87171; }
+  .fte-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .fte-title { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8a96b8; }
+  .fte-count { font-size: 22px; font-weight: 700; color: #fff; }
+  .fte-list { display: flex; flex-direction: column; gap: 7px; }
+  .fte-name { font-size: 13px; color: #dbe4ff; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 9px; }
+  .fte-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--fc,#38bdf8); box-shadow: 0 0 6px var(--fc,#38bdf8); flex-shrink: 0; }
+  .fte-empty { font-size: 12px; color: #4c5878; font-style: italic; padding: 6px 0; }
+
+  /* ── D1 Delay ── */
+  .dd-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .dd-hero-card { border-radius: 18px; padding: 26px; position: relative; overflow: hidden; }
+  .dd-hero-card::before { content: ''; position: absolute; top:0;left:0;right:0; height: 2px; background: var(--accent,#38bdf8); box-shadow: 0 0 12px var(--accent,#38bdf8); }
+  .dd-hero-card.green { --accent:#34d399; } .dd-hero-card.red { --accent:#f87171; }
+  .dd-hero-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8a96b8; margin-bottom: 10px; }
+  .dd-hero-value { font-size: 46px; font-weight: 700; color: #fff; letter-spacing: -0.03em; line-height: 1; text-shadow: 0 0 24px rgba(255,255,255,0.15); }
+  .delay-bars { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+  .delay-bar-row { display: flex; align-items: center; gap: 12px; }
+  .delay-bar-label { font-size: 12.5px; color: #8a96b8; width: 96px; flex-shrink: 0; }
+  .delay-bar-track { flex: 1; background: rgba(255,255,255,0.07); border-radius: 5px; height: 9px; overflow: hidden; }
+  .delay-bar-fill { height: 100%; border-radius: 5px; background: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.5); transition: width 0.7s ease; }
+  .delay-bar-fill.orange { background: #f97316; box-shadow: 0 0 8px rgba(249,115,22,0.5); }
+  .delay-bar-fill.red    { background: #f87171; box-shadow: 0 0 8px rgba(248,113,113,0.5); }
+  .delay-bar-val { font-size: 12.5px; font-weight: 600; color: #dbe4ff; width: 30px; text-align: right; flex-shrink: 0; }
+  .lanes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 14px; }
+  .lanes-card { border-radius: 18px; padding: 18px; position: relative; overflow: hidden; }
+  .lanes-card::before { content: ''; position: absolute; top:0;left:0;right:0; height: 2px; background: var(--lc,#fbbf24); box-shadow: 0 0 12px var(--lc,#fbbf24); }
+  .lanes-card.b1{--lc:#fbbf24} .lanes-card.b2{--lc:#f97316} .lanes-card.b3{--lc:#f87171} .lanes-card.b4{--lc:#ef4444}
+  .lanes-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .lanes-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8a96b8; }
+  .lanes-count { font-size: 16px; font-weight: 700; color: #fff; }
+  .lanes-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 160px; overflow-y: auto; }
+  .lane-chip { font-size: 11px; padding: 4px 9px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #c4cde8; font-family: 'SF Mono', monospace; }
+  .date-badge { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 24px; font-size: 12.5px; font-weight: 500; margin-bottom: 22px; backdrop-filter: blur(10px); }
+  .date-badge.yesterday { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.4); color: #34d399; }
+  .date-badge.fallback  { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.4); color: #fbbf24; }
+
+  /* ── Tables ── */
+  .data-table-container { overflow-x: auto; width: 100%; }
+  .data-table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 12.5px; text-align: left; }
+  .data-table th {
+    font-weight: 700; color: #ffffff; text-transform: uppercase;
+    font-size: 10.5px; letter-spacing: 0.08em;
+    background: linear-gradient(135deg, rgba(56,189,248,0.25), rgba(167,139,250,0.20));
+    border-bottom: 2px solid rgba(56,189,248,0.5);
+    position: sticky; top: 0; z-index: 2;
+    padding: 13px 14px; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .data-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #dbe4ff; white-space: nowrap; }
+  .data-table tbody tr:hover { background: rgba(56,189,248,0.07); }
+  .data-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+  .data-table tbody tr:nth-child(even):hover { background: rgba(56,189,248,0.07); }
+  .data-table tfoot tr td {
+    font-weight: 700;
+    background: rgba(255,255,255,0.08);
+    border-top: 2px solid rgba(255,255,255,0.2);
+    color: #ffffff; font-size: 13px; padding: 12px 14px;
+  }
+
+  /* ── Nested Sub-groups ── */
+  .nav-sub-group-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    padding: 8px 10px; font-size: 13px; font-weight: 600; color: #9aa8cf;
+    cursor: pointer; border-radius: 8px; background: none; border: none;
+    font-family: 'Inter', sans-serif; text-align: left;
+    transition: background 0.15s, color 0.15s; margin-top: 4px; margin-bottom: 2px;
+  }
+  .nav-sub-group-header:hover { background: rgba(255,255,255,0.06); color: #38bdf8; }
+  .nav-sub-group-header.open { color: #38bdf8; }
+  .nav-sub-group-header .chevron { transition: transform 0.2s; font-size: 10px; }
+  .nav-sub-group-header.open .chevron { transform: rotate(90deg); }
+
+  .nav-nested-sub {
+    max-height: 0; overflow: hidden; transition: max-height 0.25s ease; padding-left: 12px;
+  }
+  .nav-nested-sub.open { max-height: 2000px; }
+
+  .nav-nested-item {
+    display: block; width: 100%; padding: 8px 10px 8px 24px; font-size: 12.5px;
+    color: #7885ab; cursor: pointer; border-radius: 8px; background: none; border: none;
+    font-family: 'Inter', sans-serif; text-align: left;
+    transition: background 0.15s, color 0.15s; margin-bottom: 2px; position: relative;
+  }
+  .nav-nested-item::before {
+    content: ''; position: absolute; left: 12px; top: 50%; width: 4px; height: 4px;
+    border-radius: 50%; background: currentColor; transform: translateY(-50%); opacity: 0.5;
+  }
+  .nav-nested-item:hover { background: rgba(255,255,255,0.06); color: #dbe4ff; }
+  .nav-nested-item.active { background: rgba(56,189,248,0.14); color: #38bdf8; font-weight: 600; }
+
+  /* ── Cell Colors ── */
+  .cell-green { background: rgba(0,176,80,0.45) !important; color: #00e676 !important; font-weight: 700; }
+  .cell-red   { background: rgba(255,0,0,0.40)  !important; color: #ff6b6b !important; font-weight: 700; }
+  .cell-amber { background: rgba(255,153,0,0.40) !important; color: #ffca28 !important; font-weight: 700; }
+
+  /* ── Block Titles ── */
+  .block-title {
+    font-size: 13px; font-weight: 600; padding: 10px 14px;
+    border-radius: 10px; margin-bottom: 10px;
+    background: rgba(255,255,255,0.04);
+    border-left: 3px solid var(--bt-color,#38bdf8);
+    color: var(--bt-color,#38bdf8);
+  }
+  .block-title.day-color   { --bt-color:#38bdf8; }
+  .block-title.night-color { --bt-color:#a78bfa; }
+
+  /* ── Charts ── */
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px; }
+  .chart-card { padding: 20px; }
+  .chart-title { font-size: 12px; font-weight: 600; color: #8a96b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+  canvas { max-height: 220px; width: 100% !important; }
+
+  /* ── Status Bar ── */
+  .status-bar { display: flex; align-items: center; gap: 9px; margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; flex-shrink: 0; }
+  .status-text { font-size: 12px; color: #5c6890; }
+  .status-text b { color: #8a96b8; font-weight: 500; }
+  .warn-text { font-size: 12.5px; color: #fbbf24; margin-top: 8px; }
+  .error-box { color: #f87171; font-size: 13px; padding: 14px 18px; border-radius: 14px; margin-top: 14px; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); }
+
+  /* ── PPMP ── */
+  .ppmp-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px; margin-bottom: 8px; }
+  .ppmp-table-wrap { max-height: 70vh; overflow-y: auto; overflow-x: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); width: 100%; }
+  .ppmp-active-label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-bottom: 20px; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; }
+
+  /* ── Floating Status Pill (Live / Historical Badge) ── */
+  .floating-status-pill {
+    position: absolute;
+    top: 20px;
+    right: 32px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(10, 14, 26, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  }
+  .btn-sidebar-cal {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    cursor: pointer;
+    border-radius: 8px;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.15s;
+    margin-left: 2px;
+  }
+  .btn-sidebar-cal:hover {
+    background: rgba(56, 189, 248, 0.3);
+    transform: scale(1.08);
+  }
+  .mode-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .mode-badge.live { color: #34d399; }
+  .mode-badge.hist { color: #fbbf24; }
+  .hist-notice { font-size: 11.5px; color: #fbbf24; font-weight: 600; }
+  .btn-live-compact {
+    background: rgba(52, 211, 153, 0.2);
+    border: 1px solid #34d399;
+    color: #34d399;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 10.5px;
+    transition: all 0.2s ease;
+  }
+  .btn-live-compact:hover { background: rgba(52, 211, 153, 0.4); }
+
+  /* ── Modal Dialog ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-card {
+    width: 100%; max-width: 380px;
+    border-radius: 18px; padding: 22px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .modal-header h3 { font-size: 15px; font-weight: 700; color: #eef1fb; }
+  .modal-close-btn { background: none; border: none; color: #8a96b8; font-size: 16px; cursor: pointer; }
+  .modal-close-btn:hover { color: #eef1fb; }
+  .modal-body { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+  .modal-field { display: flex; flex-direction: column; gap: 5px; }
+  .modal-field label { font-size: 11px; font-weight: 600; color: #8a96b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .modal-input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #eef1fb;
+    padding: 9px 12px; border-radius: 8px;
+    font-family: inherit; font-size: 12.5px; outline: none;
+  }
+  .modal-input option { background: #0f172a; color: #eef1fb; }
+  .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #8a96b8; padding: 8px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .btn-primary {
+    background: #38bdf8; border: none; color: #0f172a;
+    padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .btn-primary:hover { background: #0284c7; color: #ffffff; }
+
+  /* ── Light Theme ── */
+  body.light { background:#f3f6fc; color:#1e293b; }
+  body.light::before {
+    opacity:.5; filter:blur(70px);
+    background:
+      radial-gradient(circle at 15% 20%, rgba(125,211,252,.55), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(196,181,253,.50), transparent 42%),
+      radial-gradient(circle at 75% 80%, rgba(153,246,228,.45), transparent 45%),
+      radial-gradient(circle at 20% 85%, rgba(165,180,252,.40), transparent 40%);
+  }
+  body.light::after { background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(243,246,252,.8)); }
+
+  body.light .glass {
+    background:#fff; border:1px solid #e5e9f2;
+    backdrop-filter:none; -webkit-backdrop-filter:none;
+    box-shadow:0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+  }
+  body.light .card::after { opacity:.07; }
+  body.light .card:hover { border-color:#cbd5e1; }
+  body.light .clickable-card:hover { border-color:#38bdf8; box-shadow:0 10px 28px rgba(14,116,144,.15); }
+  body.light .clickable-card[style*="15, 23, 42"] { background:#fff !important; }
+
+  body.light .sidebar { background:rgba(255,255,255,.88); border-right:1px solid #e5e9f2; }
+  body.light .sidebar-status { background:#f8fafc; border-color:#e5e9f2; }
+  body.light .nav-item, body.light .nav-group-header, body.light .nav-sub-group-header,
+  body.light .nav-nested-item, body.light .nav-sub-item { color:#475569; }
+  body.light .nav-group-header.open, body.light .nav-sub-group-header.open { color:#0369a1; }
+  body.light .nav-item:hover, body.light .nav-group-header:hover,
+  body.light .nav-sub-group-header:hover, body.light .nav-nested-item:hover { background:#f1f5f9; color:#0f172a; }
+  body.light .nav-item.active, body.light .nav-nested-item.active { background:#e0f2fe; color:#0369a1; }
+  body.light .countdown-ring circle.bg { stroke:rgba(15,23,42,.12); }
+  body.light .countdown-number { color:#1e293b; }
+  body.light .refresh-status, body.light .status-text { color:#64748b; }
+  body.light .status-text b { color:#334155; }
+  body.light .status-bar { border-top-color:#e2e8f0; }
+
+  body.light .floating-status-pill { background: #ffffff; border-color: #cbd5e1; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+  body.light .modal-card { background: #ffffff; border-color: #cbd5e1; box-shadow: 0 25px 50px rgba(0,0,0,0.15); }
+  body.light .modal-header h3 { color: #0f172a; }
+  body.light .modal-close-btn:hover { color: #0f172a; }
+  body.light .modal-field label { color: #475569; }
+  body.light .modal-input { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
+  body.light .modal-input option { background: #ffffff; color: #0f172a; }
+  body.light .btn-secondary { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+
+  body.light .page-title { background:linear-gradient(90deg,#0f172a,#334155); -webkit-background-clip:text; background-clip:text; }
+  body.light .page-sub, body.light .section-label, body.light .card-sub { color:#64748b; }
+  body.light .section-label::after { background:#e2e8f0; }
+  body.light .card-label, body.light .fte-title, body.light .lanes-title,
+  body.light .dd-hero-label, body.light .chart-title, body.light .delay-bar-label { color:#64748b; }
+  body.light .card-value, body.light .dd-hero-value, body.light .fte-count,
+  body.light .lanes-count { color:#0f172a !important; text-shadow:none; }
+  body.light [style*="color: #ffffff"], body.light [style*="color:#ffffff"] { color:#0f172a !important; }
+  body.light [style*="color: #94a3b8"], body.light [style*="color:#5c6890"], body.light [style*="color:#4c5878"] { color:#64748b !important; }
+  body.light [style*="color: #38bdf8"], body.light [style*="color:#38bdf8"] { color:#0284c7 !important; }
+  body.light [style*="color: #fbbf24"] { color:#b45309 !important; }
+  body.light [style*="color: #f87171"] { color:#dc2626 !important; }
+  body.light .warn-text { color:#b45309; }
+
+  body.light .fte-name, body.light .lane-chip { background:#f1f5f9; border-color:#e2e8f0; color:#334155; }
+  body.light .delay-bar-val { color:#1e293b; }
+  body.light .delay-bar-track { background:#e2e8f0; }
+
+  body.light .date-badge.yesterday { background:#dcfce7; border-color:#86efac; color:#166534; }
+  body.light .date-badge.fallback  { background:#fef3c7; border-color:#fcd34d; color:#92400e; }
+  body.light .ppmp-active-label { background:#e0f2fe; border-color:#7dd3fc; color:#0369a1; }
+  body.light .ppmp-table-wrap { border-color:#e2e8f0; }
+  body.light .block-title { background:#f8fafc; }
+  body.light .block-title.day-color { --bt-color:#0284c7; }
+  body.light .block-title.night-color { --bt-color:#7c3aed; }
+
+  body.light .data-table th {
+    color:#1e293b; background:linear-gradient(135deg,#e0f2fe,#ede9fe);
+    border-bottom:2px solid #38bdf8; box-shadow:none;
+  }
+  body.light .data-table td { color:#1e293b; border-bottom-color:#eef2f7; }
+  body.light .data-table tbody tr:nth-child(even) { background:#f8fafc; }
+  body.light .data-table tbody tr:hover,
+  body.light .data-table tbody tr:nth-child(even):hover { background:#e0f2fe; }
+  body.light .data-table tfoot tr td { background:#eef2ff; color:#1e293b; border-top:2px solid #c7d2fe; }
+
+  body.light .cell-green { background:#dcfce7 !important; color:#166534 !important; }
+  body.light .cell-red   { background:#fee2e2 !important; color:#b91c1c !important; }
+  body.light .cell-amber { background:#fef3c7 !important; color:#92400e !important; }
+
+  body.light .cutoff-blue td    { background:#e0f2fe !important; color:#075985 !important; }
+  body.light .cutoff-purple td  { background:#ede9fe !important; color:#5b21b6 !important; }
+  body.light .cutoff-teal td    { background:#ccfbf1 !important; color:#115e59 !important; }
+  body.light .cutoff-amber td   { background:#fef3c7 !important; color:#92400e !important; }
+  body.light .cutoff-pink td    { background:#fce7f3 !important; color:#9d174d !important; }
+  body.light .cutoff-indigo td  { background:#e0e7ff !important; color:#3730a3 !important; }
+  body.light .cutoff-emerald td { background:#d1fae5 !important; color:#065f46 !important; }
+  body.light [class^="cutoff-"]:hover td { filter:brightness(.96); }
+
+  .card-alert,
+  body.light .card-alert { background: rgba(248,113,113,0.45) !important; border-color: rgba(248,113,113,0.6) !important; }
+
+  body.light .page::-webkit-scrollbar-thumb,
+  body.light .sidebar-nav-container::-webkit-scrollbar-thumb { background:rgba(2,132,199,.35) !important; }
+  #availCard.avail-yellow { background: rgba(251,191,36,0.35) !important; border-color: rgba(251,191,36,0.7) !important; }
+  #availCard.avail-lightgreen { background: rgba(163,230,53,0.30) !important; border-color: rgba(163,230,53,0.7) !important; }
+  #availCard.avail-green { background: rgba(52,211,153,0.40) !important; border-color: rgba(52,211,153,0.8) !important; }
+
+  /* ── Collapsible Sidebar Rules ── */
+  .sidebar-top { grid-row: 1 / 2; display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-toggle {
+    width: 28px; height: 28px; flex-shrink: 0; cursor: pointer; border-radius: 8px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    color: #8a96b8; font-size: 11px; transition: background .15s, color .15s;
+  }
+  .sidebar-toggle:hover { background: rgba(56,189,248,0.18); color: #38bdf8; }
+
+  body.sb-collapsed .sidebar {
+    width: 64px !important;
+    padding: 16px 8px 14px !important;
+  }
+  body.sb-collapsed .main {
+    margin-left: 64px !important;
+    width: calc(100% - 64px) !important;
+  }
+  body.sb-collapsed .sidebar-top { justify-content: center; }
+  body.sb-collapsed .sidebar-brand,
+  body.sb-collapsed .nav-sub,
+  body.sb-collapsed .nav-nested-sub,
+  body.sb-collapsed .nav-group-header .chevron,
+  body.sb-collapsed .nav-sub-group-header .chevron,
+  body.sb-collapsed .refresh-status { display: none; }
+  body.sb-collapsed .nav-item,
+  body.sb-collapsed .nav-group-header { font-size: 0; justify-content: center; padding: 11px 0; gap: 0; }
+  body.sb-collapsed .nav-group-left { gap: 0; }
+  body.sb-collapsed .sidebar-status { padding: 8px 0; }
+  body.sb-collapsed .sidebar-status-row { justify-content: center; }
+  body.sb-collapsed .sidebar-resizer { display: none !important; }
+
+  .pre-c { margin-top: 12px; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em; }
+  body.light .pre-c { color: #0f172a; }
+  body.light .sidebar-toggle { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
+  body.light .sidebar-toggle:hover { background: #e0f2fe; color: #0369a1; }
+
+  /* ── Mobile Layout ── */
+  .mobile-menu, .m-backdrop { display: none; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 250px !important; transform: translateX(-100%); transition: transform .25s ease; z-index: 1000; }
+    body.m-open .sidebar { transform: none; }
+    .sidebar-toggle, .sidebar-resizer { display: none !important; }
+    body.m-open .m-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 900; }
+
+    .mobile-menu {
+      display: block; position: fixed; top: 10px; left: 10px; z-index: 800;
+      width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer;
+      background: rgba(15,23,42,.85); color: #eef1fb; border: 1px solid rgba(255,255,255,.18);
+    }
+    body.light .mobile-menu { background: #fff; color: #0f172a; border-color: #e2e8f0; }
+
+    .main { margin-left: 0 !important; width: 100% !important; height: 100dvh; }
+    .page { padding: 62px 14px 40px; height: 100dvh; }
+    .page-title { font-size: 19px; }
+
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .card { padding: 14px 12px; }
+    .card-value { font-size: 24px; }
+    .hero-single { max-width: none; min-width: 0 !important; flex: 1 1 calc(50% - 7px) !important; }
+    .hero-single .card-value { font-size: 28px; }
+    .dd-hero { grid-template-columns: 1fr; }
+    .dd-hero-value { font-size: 34px; }
+    .fte-grid, .lanes-grid, .ppmp-summary-grid { grid-template-columns: 1fr; }
+
+    .data-table { min-width: 0; font-size: 12px; }
+    .data-table th { padding: 10px 8px; font-size: 10px; }
+    .data-table td { padding: 8px 8px; }
+
+    .card-label, .fte-title, .lanes-title, .dd-hero-label, .chart-title {
+      color: #e6ecff; font-weight: 700; letter-spacing: 0.08em;
+    }
+    .card-sub { color: #9fb0d6; }
+    body.light .card-label, body.light .fte-title, body.light .lanes-title,
+    body.light .dd-hero-label, body.light .chart-title { color: #1e293b; }
+    body.light .card-sub { color: #475569; }
+
+    [style*="min-width: 600px"] { min-width: 0 !important; }
+    [style*="repeat(3, minmax(0, 1fr))"] { grid-template-columns: 1fr !important; }
+    .floating-status-pill { top: 10px; right: 10px; padding: 4px 10px; }
+  }
+
+  /* ── Typography & Label Overrides ── */
+  .card .card-label,
+  .card > div[style*="text-transform: uppercase"],
+  .fte-card .fte-title,
+  .lanes-card .lanes-title,
+  .dd-hero-card .dd-hero-label,
+  .chart-card .chart-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    letter-spacing: 0.02em !important;
+    text-transform: none !important;
+    opacity: 1 !important;
+  }
+
+  body.light .card .card-label,
+  body.light .card > div[style*="text-transform: uppercase"],
+  body.light .fte-card .fte-title,
+  body.light .lanes-card .lanes-title,
+  body.light .dd-hero-card .dd-hero-label,
+  body.light .chart-card .chart-title {
+    color: #0f172a !important;
+  }
+
+  @media (max-width: 768px) {
+    .page { padding-top: 10px; }
+    .page-title {
+      display: flex;
+      align-items: center;
+      min-height: 40px;
+      margin-left: 50px;
+      margin-bottom: 14px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-brand">⚡ Bilaspur MH</div>
+      <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Collapse / expand">◀</button>
+    </div>
+
+    <div class="sidebar-nav-container">
+      <button class="nav-item" id="themeToggle" onclick="toggleTheme()">
+        <span class="nav-icon" id="themeIcon">☀</span> <span id="themeText">Light mode</span>
+      </button>
+
+      <button class="nav-item active" id="navOverview" onclick="showPage('overview')">
+        <span class="nav-icon">◆</span> Overview
+      </button>
+      
+      <button class="nav-group-header" id="reportsGroup" onclick="toggleGroup()">
+        <span class="nav-group-left"><span class="nav-icon">▤</span> Reports</span>
+        <span class="chevron">▸</span>
+      </button>
+      <div class="nav-sub" id="reportsSub">
+        <!-- IRT Sub-group -->
+        <button class="nav-sub-group-header" id="irtGroup" onclick="toggleSubGroup('irt')">
+          <span class="nav-group-left"><span class="nav-icon">📁</span> <span class="nav-text">IRT</span></span>
+          <span class="chevron" id="irtChevron">▸</span>
+        </button>
+        <div class="nav-nested-sub" id="irtSub">
+          <button class="nav-nested-item" id="navDod3pl" onclick="showPage('dod3pl')"><span class="nav-text">3 PL DOD Summary</span></button>
+          <button class="nav-nested-item" id="navFuncBreach" onclick="showPage('funcbreach')"><span class="nav-text">Functional Breach</span></button>
+          <button class="nav-nested-item" id="navHygiene" onclick="showPage('hygiene')"><span class="nav-text">Hygiene Report</span></button>
+          <button class="nav-nested-item" id="navRepacking" onclick="showPage('repacking')"><span class="nav-text">Repacking'2026</span></button>
+          <button class="nav-nested-item" id="navFkmp" onclick="showPage('fkmp')"><span class="nav-text">FKMP Summary 2026</span></button>
+          <button class="nav-nested-item" id="navSpillover" onclick="showPage('spillover')"><span class="nav-text">Spillover Details</span></button>
+        </div>
+        
+        <!-- DH Sub-group -->
+        <button class="nav-sub-group-header" id="dhGroup" onclick="toggleSubGroup('dh')">
+          <span class="nav-group-left"><span class="nav-icon">📁</span> <span class="nav-text">DH</span></span>
+          <span class="chevron" id="dhChevron">▸</span>
+        </button>
+        <div class="nav-nested-sub" id="dhSub">
+          <button class="nav-nested-item" id="navHourly" onclick="showPage('hourly')"><span class="nav-text">Hourly Shift Report</span></button>
+        </div>
+
+        <!-- TH Sub-group -->
+        <button class="nav-sub-group-header" id="thGroup" onclick="toggleSubGroup('th')">
+          <span class="nav-group-left"><span class="nav-icon">📁</span> <span class="nav-text">TH</span></span>
+          <span class="chevron" id="thChevron">▸</span>
+        </button>
+        <div class="nav-nested-sub" id="thSub">
+          <button class="nav-nested-item" id="navPpmp" onclick="showPage('ppmp')"><span class="nav-text">PPMP Arrival Live Report</span></button>
+          <button class="nav-nested-item" id="navDelay" onclick="showPage('delay')"><span class="nav-text">D-1 Delay Departure Summary</span></button>
+          <button class="nav-nested-item" id="navDc12" onclick="showPage('dc12')"><span class="nav-text">12 DC Details</span></button>
+        </div>
+      </div>
+
+      <button class="nav-item" id="navPreAdhoc" onclick="showPage('preadhoc')"><span class="nav-icon">⚠</span> Pre-Adhoc Plan</button>
+      <button class="nav-item" id="navXdPend" onclick="showPage('xdpend')"><span class="nav-icon">⏳</span> XD Pendency</button>
+    </div>
+
+    <!-- Pinned Bottom Countdown -->
+    <div class="sidebar-status">
+      <div class="sidebar-status-row">
+        <div class="countdown-ring">
+          <svg width="34" height="34" viewBox="0 0 34 34">
+            <circle class="bg" cx="17" cy="17" r="14.5"/>
+            <circle class="progress" id="ring" cx="17" cy="17" r="14.5"/>
+          </svg>
+          <div class="countdown-number" id="countdownNum">10</div>
+        </div>
+        <div class="refresh-status"><span class="pulse"></span><span id="fetchTs">Fetching…</span></div>
+      </div>
+    </div>
+    <div class="sidebar-resizer" id="sidebarResizer"></div>
+  </aside>
+
+  <!-- ── Main Content Area ── -->
+  <main class="main">
+    <!-- Floating Live / Historical Status Badge -->
+    <div class="floating-status-pill glass">
+      <span id="modeBadge" class="mode-badge live">● LIVE</span>
+      <span id="historicalNotice" class="hist-notice" style="display: none;"></span>
+      <button id="btnGoLive" class="btn-live-compact" onclick="switchToLiveMode()" style="display: none;">🔴 GO LIVE</button>
+      <button class="btn-sidebar-cal" onclick="openDateModal()" title="Select Date & Shift">📅</button>
+    </div>
+
+    <button class="mobile-menu" id="mobileMenu" onclick="toggleMobileNav()">☰</button>
+    <div class="m-backdrop" onclick="toggleMobileNav()"></div>
+
+    <!-- Overview Page -->
+    <div class="page active" id="page-overview">
+      <div class="page-title">Overview</div>
+      <div class="page-sub">Bilaspur SC · Shift Operations</div>
+      
+      <div class="section-label" style="margin-top:0">Manpower Details</div>
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px;">
+        <div class="card glass amber hero-single clickable-card" style="flex: 1; min-width: 180px;" data-url="https://docs.google.com/spreadsheets/d/1CVVb_RdJZ8slJ3pL-Sd_lup8-PNN4W1J17N6uGcFqlc/edit?gid=12897074#gid=12897074">
+          <div class="card-label">Shift Plan</div>
+          <div class="card-value">205</div>
+        </div>
+        <div class="card glass green hero-single clickable-card" style="flex: 1; min-width: 220px;" data-url="https://docs.google.com/spreadsheets/d/1PtYaFei6Zmu31nYr-zqBINaU2uWoKNtDIk4bF87VqAc/edit">
+          <div class="card-label">HR Scan</div>
+          <div class="card-value" id="manpower">—</div>
+          <div class="card-sub">DH + TH</div>
+        </div>
+        <div class="card glass blue hero-single clickable-card" style="flex: 1; min-width: 180px;" data-url="https://docs.google.com/spreadsheets/d/1eXGyPJ4biw03b-Gj-7qQ8RV6SaVz-epdG8S9RfZTHvw/edit#gid=2121946838">
+          <div class="card-label">Floor Scan</div>
+          <div class="card-value" id="floorScan">—</div>
+          <div class="card-sub">DH + TH</div>
+        </div>
+        <div class="card glass purple hero-single clickable-card" style="flex: 1; min-width: 180px;" data-url="https://docs.google.com/spreadsheets/d/1n894UCx9z_Xdo1b2-MBgek77SRDqTFNEbNL-dzDNpRA/edit?gid=0#gid=0">
+          <div class="card-label">Spared WF</div>
+          <div class="card-value" id="sparedWf">—</div>
+          <div class="card-sub" id="sparedWfSub">Current shift</div>
+        </div>
+        <div class="card glass hero-single clickable-card" id="availCard" style="flex: 1; min-width: 180px;" data-url="https://docs.google.com/spreadsheets/d/1eXGyPJ4biw03b-Gj-7qQ8RV6SaVz-epdG8S9RfZTHvw/edit#gid=2121946838">
+          <div class="card-label">Availability</div>
+          <div class="card-value" id="availability">—</div>
+          <div class="card-sub">(HR Scan-Spared WF) / Shift AOP</div>
+        </div>
+      </div>
+
+      <div class="section-label">Load Plan — <span id="invDateLabel" style="text-transform:none;letter-spacing:0;">today</span></div>
+      <div class="grid">
+        <div class="card glass purple clickable-card" data-url="https://docs.google.com/spreadsheets/d/1DzB26VaB1XBud3mfOj2eeKrhUnreyfK1q7FHzPB_mio/edit">
+          <div class="card-label">Inventory load plan</div>
+          <div class="card-value" id="inventoryLoadPlan">—</div>
+        </div>
+        <div class="card glass blue clickable-card" data-url="https://docs.google.com/spreadsheets/d/1DzB26VaB1XBud3mfOj2eeKrhUnreyfK1q7FHzPB_mio/edit">
+          <div class="card-label">PPMP load plan</div>
+          <div class="card-value" id="ppmpLoadPlan">—</div>
+        </div>
+        <div class="card glass teal clickable-card" data-url="https://docs.google.com/spreadsheets/d/1DzB26VaB1XBud3mfOj2eeKrhUnreyfK1q7FHzPB_mio/edit#gid=622710344">
+          <div class="card-label">FWD Resort</div>
+          <div class="card-value" id="forwardResort">—</div>
+        </div>
+        <div class="card glass red clickable-card" data-url="https://docs.google.com/spreadsheets/d/1DzB26VaB1XBud3mfOj2eeKrhUnreyfK1q7FHzPB_mio/edit#gid=622710344">
+          <div class="card-label">RTO</div>
+          <div class="card-value" id="rto">—</div>
+        </div>
+        <div class="card glass green clickable-card" data-url="https://docs.google.com/spreadsheets/d/1DzB26VaB1XBud3mfOj2eeKrhUnreyfK1q7FHzPB_mio/edit">
+          <div class="card-label">Day shift plan</div>
+          <div class="card-value" id="dayShiftPlan">—</div>
+        </div>
+        <div class="card glass amber clickable-card" data-url="https://docs.google.com/spreadsheets/d/1DzB26VaB1XBud3mfOj2eeKrhUnreyfK1q7FHzPB_mio/edit">
+          <div class="card-label">Night shift plan</div>
+          <div class="card-value" id="nightShiftPlan">—</div>
+        </div>
+      </div>
+      <div id="warnBox" class="warn-text"></div>
+
+      <div class="section-label">FTE Roster — Today</div>
+      <div class="fte-grid">
+        <div class="fte-card glass day clickable-card" data-url="https://docs.google.com/spreadsheets/d/1UZkr03LjVcxE7mTtGUm6iPhoE6F7n3F08p_oK-9r0fo/edit">
+          <div class="fte-header"><span class="fte-title">Day shift</span><span class="fte-count" id="dayCount">—</span></div>
+          <div class="fte-list" id="dayList"></div>
+        </div>
+        <div class="fte-card glass night clickable-card" data-url="https://docs.google.com/spreadsheets/d/1UZkr03LjVcxE7mTtGUm6iPhoE6F7n3F08p_oK-9r0fo/edit">
+          <div class="fte-header"><span class="fte-title">Night shift</span><span class="fte-count" id="nightCount">—</span></div>
+          <div class="fte-list" id="nightList"></div>
+        </div>
+        <div class="fte-card glass weekoff clickable-card" data-url="https://docs.google.com/spreadsheets/d/1UZkr03LjVcxE7mTtGUm6iPhoE6F7n3F08p_oK-9r0fo/edit">
+          <div class="fte-header"><span class="fte-title">Week off</span><span class="fte-count" id="woCount">—</span></div>
+          <div class="fte-list" id="woList"></div>
+        </div>
+        <div class="fte-card glass leave clickable-card" data-url="https://docs.google.com/spreadsheets/d/1UZkr03LjVcxE7mTtGUm6iPhoE6F7n3F08p_oK-9r0fo/edit">
+          <div class="fte-header"><span class="fte-title">On leave</span><span class="fte-count" id="leaveCount">—</span></div>
+          <div class="fte-list" id="leaveList"></div>
+        </div>
+      </div>
+      <div id="fteWarn" class="warn-text"></div>
+
+      <div class="section-label">WF Sparing Details</div>
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1n894UCx9z_Xdo1b2-MBgek77SRDqTFNEbNL-dzDNpRA/edit?gid=0#gid=0">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead><tr><th>Date</th><th>Shift</th><th>Sparing Start Time</th><th>Department</th><th>Count</th></tr></thead>
+            <tbody id="wfBody"><tr><td colspan="5" style="text-align:center;color:#5c6890;padding:16px;">Fetching WF sparing data...</td></tr></tbody>
+          </table>
+        </div>
+        <div id="wfWarn" class="warn-text"></div>
+      </div>
+
+      <div class="card glass" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1eXGyPJ4biw03b-Gj-7qQ8RV6SaVz-epdG8S9RfZTHvw/edit#gid=1465561174">
+        <div class="card-label" style="margin-bottom:10px;">Late Arrival Details</div>
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="prodLossHead">
+              <tr><th colspan="7" style="text-align:center;">Loading late arrival headers...</th></tr>
+            </thead>
+            <tbody id="prodLossBody">
+              <tr><td colspan="7" style="text-align:center;color:#5c6890;padding:16px;">Fetching production loss data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="dot"></div>
+        <div class="status-text">Live · Created by BLP-MH Team ❤️ · Time: <b id="sheetTsBar">—</b></div>
+      </div>
+    </div>
+
+    <!-- FKMP Summary Page -->
+    <div class="page" id="page-fkmp">
+      <div class="page-title">FKMP Summary 2026</div>
+      <div class="section-label" style="margin-top:0">
+        Ongoing Month Records — <span id="fkmpCurrentMonthTitle" style="text-transform:none;letter-spacing:0;color:#38bdf8;">Loading…</span>
+      </div>
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:28px;" data-url="https://docs.google.com/spreadsheets/d/1CXAcH4_iDyW2HmP_aeWK_iRoXcUfOJtzNLLL3aQt2r8/edit#gid=1528009332">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="fkmpTableHead">
+              <tr><th colspan="7" style="text-align:center;">Loading FKMP Headers…</th></tr>
+            </thead>
+            <tbody id="fkmpTableBody">
+              <tr><td colspan="7" style="text-align:center;color:#5c6890;padding:24px;">Fetching Current Month Data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-label">Previous Records & Monthly Totals</div>
+      <div id="fkmpMonthlyContainer"></div>
+      <div id="fkmpWarn" class="warn-text"></div>
+    </div>
+
+    <!-- D-1 Delay Page -->
+    <div class="page" id="page-delay">
+      <div class="page-title">D-1 Delay Departure Summary</div>
+      <div id="ddDateBadge" class="date-badge yesterday">
+        <span id="ddDateLabel">Loading…</span>
+      </div>
+      <div class="dd-hero">
+        <div class="dd-hero-card glass green clickable-card" data-url="https://docs.google.com/spreadsheets/d/1dnYwkTaTeknfJkKPjUfvkAfbHOW_gA2NWSgTKbo4teU/edit#gid=906400899">
+          <div class="dd-hero-label">On Time</div>
+          <div class="dd-hero-value" id="ddOnTime">—</div>
+        </div>
+        <div class="dd-hero-card glass red clickable-card" data-url="https://docs.google.com/spreadsheets/d/1dnYwkTaTeknfJkKPjUfvkAfbHOW_gA2NWSgTKbo4teU/edit#gid=906400899">
+          <div class="dd-hero-label">Total (Day + Night)</div>
+          <div class="dd-hero-value" id="ddTotalDN">—</div>
+        </div>
+      </div>
+      <div class="section-label">Delay Distribution</div>
+      <div class="card glass" style="padding:20px;">
+        <div class="delay-bars">
+          <div class="delay-bar-row">
+            <span class="delay-bar-label">0–30 mins</span>
+            <div class="delay-bar-track"><div class="delay-bar-fill" id="bar030" style="width:0%"></div></div>
+            <span class="delay-bar-val" id="val030">—</span>
+          </div>
+          <div class="delay-bar-row">
+            <span class="delay-bar-label">30 mins–1 hr</span>
+            <div class="delay-bar-track"><div class="delay-bar-fill orange" id="bar3060" style="width:0%"></div></div>
+            <span class="delay-bar-val" id="val3060">—</span>
+          </div>
+          <div class="delay-bar-row">
+            <span class="delay-bar-label">1–2 hrs</span>
+            <div class="delay-bar-track"><div class="delay-bar-fill red" id="bar6120" style="width:0%"></div></div>
+            <span class="delay-bar-val" id="val6120">—</span>
+          </div>
+          <div class="delay-bar-row">
+            <span class="delay-bar-label">2 hrs+</span>
+            <div class="delay-bar-track"><div class="delay-bar-fill red" id="bar120p" style="width:0%"></div></div>
+            <span class="delay-bar-val" id="val120p">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="section-label">Lanes Affected — By Delay Bucket</div>
+      <div class="lanes-grid">
+        <div class="lanes-card glass b1">
+          <div class="lanes-header"><span class="lanes-title">0–30 mins</span><span class="lanes-count" id="lanesCount030">—</span></div>
+          <div class="lanes-chips" id="lanesChips030"></div>
+        </div>
+        <div class="lanes-card glass b2">
+          <div class="lanes-header"><span class="lanes-title">30 mins–1 hr</span><span class="lanes-count" id="lanesCount3060">—</span></div>
+          <div class="lanes-chips" id="lanesChips3060"></div>
+        </div>
+        <div class="lanes-card glass b3">
+          <div class="lanes-header"><span class="lanes-title">1–2 hrs</span><span class="lanes-count" id="lanesCount6120">—</span></div>
+          <div class="lanes-chips" id="lanesChips6120"></div>
+        </div>
+        <div class="lanes-card glass b4">
+          <div class="lanes-header"><span class="lanes-title">2 hrs+</span><span class="lanes-count" id="lanesCount120p">—</span></div>
+          <div class="lanes-chips" id="lanesChips120p"></div>
+        </div>
+      </div>
+      <div id="ddWarn" class="warn-text"></div>
+    </div>
+
+    <!-- Hourly Shift Report Page -->
+    <div class="page" id="page-hourly">
+      <div class="page-title">Hourly Shift Performance Report</div>
+      <div class="page-sub">SC (AB Block) · Live production data by hour</div>
+
+      <div class="section-label" style="margin-top:0">Day Shift</div>
+      <div id="dayTitle1" class="block-title day-color"></div>
+      <div class="card glass" style="padding:10px 16px; margin-bottom:24px;">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="dayHead1"></thead>
+            <tbody id="dayBody1"></tbody>
+            <tfoot id="dayFoot1"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div id="dayTitle2" class="block-title day-color"></div>
+      <div class="card glass" style="padding:10px 16px; margin-bottom:24px;">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="dayHead2"></thead>
+            <tbody id="dayBody2"></tbody>
+            <tfoot id="dayFoot2"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-label">Day Shift — Charts</div>
+      <div class="chart-grid">
+        <div class="card glass chart-card clickable-card" data-url="https://docs.google.com/spreadsheets/d/1agNKMQLH8CpXsOUTrFHxoJsbVMTg9uExshOxViISFGE/edit#gid=401693281">
+          <div class="chart-title">📈 Hourly PVA — Day Shift ↗</div>
+          <canvas id="dayPvaChart"></canvas>
+        </div>
+        <div class="card glass chart-card clickable-card" data-url="https://docs.google.com/spreadsheets/d/1agNKMQLH8CpXsOUTrFHxoJsbVMTg9uExshOxViISFGE/edit#gid=401693281">
+          <div class="chart-title">🔄 Max Round — Day Shift ↗</div>
+          <canvas id="dayMaxRoundChart"></canvas>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:36px;">Night Shift</div>
+      <div id="nightTitle1" class="block-title night-color"></div>
+      <div class="card glass" style="padding:10px 16px; margin-bottom:24px;">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="nightHead1"></thead>
+            <tbody id="nightBody1"></tbody>
+            <tfoot id="nightFoot1"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div id="nightTitle2" class="block-title night-color"></div>
+      <div class="card glass" style="padding:10px 16px; margin-bottom:24px;">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="nightHead2"></thead>
+            <tbody id="nightBody2"></tbody>
+            <tfoot id="nightFoot2"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-label">Night Shift — Charts</div>
+      <div class="chart-grid">
+        <div class="card glass chart-card clickable-card" data-url="https://docs.google.com/spreadsheets/d/1agNKMQLH8CpXsOUTrFHxoJsbVMTg9uExshOxViISFGE/edit#gid=1097097234">
+          <div class="chart-title">📈 Hourly PVA — Night Shift ↗</div>
+          <canvas id="nightPvaChart"></canvas>
+        </div>
+        <div class="card glass chart-card clickable-card" data-url="https://docs.google.com/spreadsheets/d/1agNKMQLH8CpXsOUTrFHxoJsbVMTg9uExshOxViISFGE/edit#gid=1097097234">
+          <div class="chart-title">🔄 Max Round — Night Shift ↗</div>
+          <canvas id="nightMaxRoundChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 PL DOD Summary Page -->
+    <div class="page" id="page-dod3pl">
+      <div class="page-title">3 PL DOD Summary</div>
+      <div class="page-sub"></div>
+
+      <div class="section-label" style="margin-top:0">DE (Delhivery + Expressbees) Summary</div>
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=1487394780#gid=1487394780">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="deTableHead"><tr><th colspan="9" style="text-align:center;">Loading DE headers…</th></tr></thead>
+            <tbody id="deTableBody"><tr><td colspan="9" style="text-align:center;color:#5c6890;padding:24px;">Fetching records…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-label">SF (Shadowfax) Summary</div>
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=1487394780#gid=1487394780">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="sfTableHead"><tr><th colspan="9" style="text-align:center;">Loading SF headers…</th></tr></thead>
+            <tbody id="sfTableBody"><tr><td colspan="9" style="text-align:center;color:#5c6890;padding:24px;">Fetching records…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="dod3plWarn" class="warn-text"></div>
+    </div>
+
+    <!-- ── Spillover Details Page ── -->
+<div class="page" id="page-spillover">
+  <div class="page-title">Spillover Details</div>
+  <div class="page-sub"></div>
+
+  <!-- Ongoing Month Records Table Only -->
+  <div class="section-label" style="margin-top:0">
+    Ongoing Month Records — <span id="spilloverCurrentMonthTitle" style="text-transform:none;letter-spacing:0;color:#38bdf8;">Loading…</span>
+  </div>
+  <div class="card glass clickable-card" style="padding:14px; margin-bottom:28px;"
+       data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit#gid=665252013">
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead id="spilloverTableHead">
+          <tr><th colspan="11" style="text-align:center;">Loading Spillover Headers…</th></tr>
+        </thead>
+        <tbody id="spilloverTableBody">
+          <tr><td colspan="11" style="text-align:center;color:#5c6890;padding:24px;">Fetching Current Month Data…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div id="spilloverWarn" class="warn-text"></div>
+</div>
+    <!-- Functional Breach Page -->
+    <div class="page" id="page-funcbreach">
+      <div class="page-title">Functional Breach Summary</div>
+      <div id="fbDateBadge" class="date-badge yesterday" style="margin-bottom: 20px;">
+        <span id="fbDateLabel">Loading date…</span>
+      </div>
+
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; align-items: stretch;">
+        <div style="flex: 3; min-width: 600px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+          <div class="card glass blue clickable-card" style="padding: 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); flex-direction: column; justify-content: space-between;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=2092535175#gid=2092535175">
+            <div style="font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; text-transform: uppercase;">FUNCTIONAL BREACH</div>
+            <div style="display: flex; align-items: baseline; gap: 6px; margin: 10px 0 4px; flex-wrap: wrap;">
+              <span id="fbValFunc" style="font-size: 30px; font-weight: 800; color: #ffffff; line-height: 1;">0</span>
+              <span id="fbPctFunc" style="font-size: 13px; font-weight: 700; color: #38bdf8;">(0%)</span>
+            </div>
+            <div style="font-size: 11px; color: #64748b;"></div>
+          </div>
+
+          <div class="card glass amber clickable-card" style="padding: 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(251, 191, 36, 0.3); flex-direction: column; justify-content: space-between;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=2092535175#gid=2092535175">
+            <div style="font-size: 11px; font-weight: 700; color: #fbbf24; letter-spacing: 0.5px; text-transform: uppercase;">POTENTIAL BREACH</div>
+            <div style="display: flex; align-items: baseline; gap: 6px; margin: 10px 0 4px; flex-wrap: wrap;">
+              <span id="fbValPot" style="font-size: 30px; font-weight: 800; color: #ffffff; line-height: 1;">0</span>
+              <span id="fbPctPot" style="font-size: 13px; font-weight: 700; color: #fbbf24;">(0%)</span>
+            </div>
+            <div style="font-size: 11px; color: #64748b;"></div>
+          </div>
+
+          <div class="card glass red clickable-card" style="padding: 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(248, 113, 113, 0.3); flex-direction: column; justify-content: space-between;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=2092535175#gid=2092535175">
+            <div style="font-size: 11px; font-weight: 700; color: #f87171; letter-spacing: 0.5px; text-transform: uppercase;">ACTUAL BREACH</div>
+            <div style="display: flex; align-items: baseline; gap: 6px; margin: 10px 0 4px; flex-wrap: wrap;">
+              <span id="fbValAct" style="font-size: 30px; font-weight: 800; color: #ffffff; line-height: 1;">0</span>
+              <span id="fbPctAct" style="font-size: 13px; font-weight: 700; color: #f87171;">(0%)</span>
+            </div>
+            <div style="font-size: 11px; color: #64748b;"></div>
+          </div>
+        </div>
+
+        <div class="card glass chart-card clickable-card" style="flex: 1.2; min-width: 240px; padding: 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08);" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=2092535175#gid=2092535175">
+          <div style="font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px;">📊 BREACH SHARE BREAKDOWN</div>
+          <div style="position: relative; height: 130px; width: 100%;">
+            <canvas id="fbDoughnutChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=2092535175#gid=2092535175">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="fbTableHead"><tr><th colspan="6" style="text-align:center;">Loading headers…</th></tr></thead>
+            <tbody id="fbTableBody"><tr><td colspan="6" style="text-align:center;color:#5c6890;padding:24px;">Fetching records…</td></tr></tbody>
+            <tfoot id="fbTableFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+      <div id="fbWarn" class="warn-text"></div>
+    </div>
+
+    <!-- Hygiene Report Page -->
+    <div class="page" id="page-hygiene">
+      <div class="page-title">Hygiene Report</div>
+      <div class="page-sub"></div>
+      
+      <!-- Dynamic Summary KPI Header Cards (Columns C to M) -->
+      <div id="hygieneKpiContainer" class="grid" style="margin-bottom: 20px;"></div>
+
+      <!-- Detailed Breakdown Table -->
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1CXAcH4_iDyW2HmP_aeWK_iRoXcUfOJtzNLLL3aQt2r8/edit#gid=375727822">
+        <div class="card-label" style="margin-bottom:12px;">Detailed Breakdown</div>
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="hygieneHead"><tr><th colspan="16" style="text-align:center;">Loading Hygiene Headers…</th></tr></thead>
+            <tbody id="hygieneBody"><tr><td colspan="16" style="text-align:center;color:#5c6890;padding:24px;">Fetching Hygiene Report Data…</td></tr></tbody>
+            <tfoot id="hygieneFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+      <div id="hygieneWarn" class="warn-text"></div>
+    </div>
+
+    <!-- Repacking Page -->
+    <div class="page" id="page-repacking">
+      <div class="page-title">Repacking'2026</div>
+      <div id="repackingDateBadge" class="date-badge yesterday" style="margin-bottom: 20px;">
+        <span id="repackingDateLabel">Loading date…</span>
+      </div>
+
+      <div class="section-label" style="margin-top:0" id="repackingCatTitle">Repacking Buckets</div>
+      <div id="repackingGroup1" class="grid" style="margin-bottom: 24px;"></div>
+
+      <div class="section-label">Summary Metrics (Rows 7 – 10)</div>
+      <div id="repackingGroup2" class="grid" style="margin-bottom: 24px;"></div>
+
+      <div class="section-label">Detailed Metrics (Rows 11 – 17)</div>
+      <div id="repackingGroup3" class="grid" style="margin-bottom: 24px;"></div>
+
+      <div class="section-label">Final Metrics (Rows 18 – 21)</div>
+      <div id="repackingGroup4" class="grid" style="margin-bottom: 24px;"></div>
+      <div id="repackingWarn" class="warn-text"></div>
+    </div>
+
+    <!-- 12 DC Details Page -->
+    <div class="page" id="page-dc12">
+      <div class="page-title">12 DC Details</div>
+      <div class="page-sub"></div>
+
+      <div id="dc12Title1" class="section-label" style="margin-top:0">Day Shift Summary</div>
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=2077536288#gid=2077536288">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="dc12Head1"><tr><th colspan="9" style="text-align:center;">Loading Day Shift Data…</th></tr></thead>
+            <tbody id="dc12Body1"><tr><td colspan="9" style="text-align:center;color:#5c6890;padding:20px;">Fetching records…</td></tr></tbody>
+            <tfoot id="dc12Foot1"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div id="dc12Title2" class="section-label">Night Shift Summary</div>
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1ipnoYi4d0cHBm6BjYKAnQuNRTUG75a4Y1FqHZpojfQE/edit?gid=2077536288#gid=2077536288">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="dc12Head2"><tr><th colspan="9" style="text-align:center;">Loading Night Shift Data…</th></tr></thead>
+            <tbody id="dc12Body2"><tr><td colspan="9" style="text-align:center;color:#5c6890;padding:20px;">Fetching records…</td></tr></tbody>
+            <tfoot id="dc12Foot2"></tfoot>
+          </table>
+        </div>
+      </div>
+      <div id="dc12Warn" class="warn-text"></div>
+    </div>
+
+    <!-- PPMP Arrival Page -->
+    <div class="page" id="page-ppmp">
+      <!-- NEW SALE BANNER (Hidden by default) -->
+      <div id="ppmpDisabledBanner" style="display: block; background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.4); color: #f87171; padding: 14px 20px; border-radius: 12px; margin-bottom: 24px; font-weight: 700; text-align: center; font-size: 15px; letter-spacing: 0.05em; text-transform: uppercase;">
+  🚨 PPMP is Unavailable till SALE
+</div>
+      <div class="page-title">PPMP Arrival Live Report</div>
+      <div class="ppmp-active-label">📅 <span id="ppmpDateLabel">Loading…</span></div>
+      <div class="section-label" style="margin-top:0">Shipment Summary</div>
+      <div class="ppmp-summary-grid">
+        <div class="card glass green clickable-card" data-url="https://docs.google.com/spreadsheets/d/1MqxoKN7qKwVc495EGyBYOMuIdOrHHx9npleZjFA2I60/edit">
+          <div class="card-label">Total Processed</div>
+          <div class="card-value" id="ppmpProcessed">—</div>
+        </div>
+        <div class="card glass purple clickable-card" data-url="https://docs.google.com/spreadsheets/d/1MqxoKN7qKwVc495EGyBYOMuIdOrHHx9npleZjFA2I60/edit">
+          <div class="card-label">Total Cross Dock (Col Y)</div>
+          <div class="card-value" id="ppmpCrossDock">—</div>
+        </div>
+        <div class="card glass amber clickable-card" data-url="https://docs.google.com/spreadsheets/d/1MqxoKN7qKwVc495EGyBYOMuIdOrHHx9npleZjFA2I60/edit">
+          <div class="card-label">Pending for Processing</div>
+          <div class="card-value" id="ppmpPending">—</div>
+        </div>
+        <div class="card glass blue clickable-card" data-url="https://docs.google.com/spreadsheets/d/1MqxoKN7qKwVc495EGyBYOMuIdOrHHx9npleZjFA2I60/edit">
+          <div class="card-label">Total Vehicles</div>
+          <div class="card-value" id="ppmpTotal">—</div>
+        </div>
+      </div>
+      <div class="section-label">All Arrival Records</div>
+      <div class="ppmp-table-wrap glass">
+        <table class="data-table">
+          <thead id="ppmpTableHead"><tr><th colspan="30" style="text-align:center;">Loading headers…</th></tr></thead>
+          <tbody id="ppmpTableBody"><tr><td colspan="30" style="text-align:center;color:#5c6890;padding:24px;">Fetching arrival records…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="ppmpWarn" class="warn-text"></div>
+    </div>
+
+    <!-- Pre-Adhoc Plan Page -->
+    <div class="page" id="page-preadhoc">
+      <div class="page-title">Pre-Adhoc Plan</div>
+      <div class="page-sub"></div>
+      <div id="preAdhocGrid" class="grid"></div>
+      <div id="preAdhocWarn" class="warn-text"></div>
+    </div>
+
+    <!-- XD Pendency Page -->
+    <div class="page" id="page-xdpend">
+      <div class="page-title">XD Pendency</div>
+      <div id="xdKpiGrid" class="grid" style="margin-bottom: 20px;"></div>
+      <div class="card glass clickable-card" style="padding:14px; margin-bottom:24px;" data-url="https://docs.google.com/spreadsheets/d/1dC7msA00KH4wi3IccUE56Bo2KswmSE53SjCO7a-oXwk/edit?gid=249195533#gid=249195533">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead id="xdHead"><tr><th style="text-align:center;">Loading headers…</th></tr></thead>
+            <tbody id="xdBody"><tr><td style="text-align:center;color:#5c6890;padding:24px;">Fetching records…</td></tr></tbody>
+            <tfoot id="xdFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+      <div id="xdWarn" class="warn-text"></div>
+    </div>
+
+    <div id="errorBox" style="padding:0 32px;"></div>
+  </main>
+</div>
+
+<!-- ── Date & Shift Glass Modal Dialog ── -->
+<div id="dateShiftModal" class="modal-overlay" onclick="closeDateModalOnBackdrop(event)">
+  <div class="modal-card glass">
+    <div class="modal-header">
+      <h3>📅 Select Date & Shift</h3>
+      <button class="modal-close-btn" onclick="closeDateModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label for="histDate">Select Date</label>
+        <input type="date" id="histDate" class="modal-input" />
+      </div>
+      <div class="modal-field">
+        <label for="histShift">Select Shift</label>
+        <select id="histShift" class="modal-input">
+          <option value="day">Day Shift</option>
+          <option value="night">Night Shift</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeDateModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitHistoricalFetch()">Fetch Records</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+const API_URL = "https://script.google.com/a/macros/flipkart.com/s/AKfycbxVxKiPcIumRmS0AEnCr2rYjOikk_a6qTRNC5NYPfLX627TqqIsy7-NEAuABnOqZBdiog/exec";
+
+  var INTERVAL       = 60;
+  var countdown      = INTERVAL;
+  var isFetching     = false;
+  var currentMode    = 'LIVE'; // 'LIVE' or 'HISTORICAL'
+  var circumference  = 2 * Math.PI * 14.5;
+  var ring = document.getElementById('ring');
+  if (ring) ring.style.strokeDasharray = circumference;
+
+  var dayPvaChart        = null;
+  var dayMaxRoundChart   = null;
+  var nightPvaChart      = null;
+  var nightMaxRoundChart = null;
+  var fbDoughnutChart    = null;
+
+  // Initialize default date in modal
+  document.addEventListener('DOMContentLoaded', function() {
+    var dateInput = document.getElementById('histDate');
+    if (dateInput) dateInput.valueAsDate = new Date();
+  });
+
+  // ── Theme Management ──
+  function isLight() { return document.body.classList.contains('light'); }
+
+  function applyTheme(light) {
+    document.body.classList.toggle('light', light);
+    var icon = document.getElementById('themeIcon');
+    var text = document.getElementById('themeText');
+    if (icon) icon.textContent = light ? '☾' : '☀';
+    if (text) text.textContent = light ? 'Dark mode' : 'Light mode';
+
+    var tc = light ? '#475569' : '#8a96b8';
+    var gc = light ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.05)';
+
+    [dayPvaChart, dayMaxRoundChart, nightPvaChart, nightMaxRoundChart].forEach(function(c) {
+      if (!c) return;
+      if (c.options && c.options.plugins && c.options.plugins.legend) {
+        c.options.plugins.legend.labels.color = tc;
+      }
+      if (c.options && c.options.scales) {
+        ['x', 'y'].forEach(function(a) {
+          if (c.options.scales[a]) {
+            c.options.scales[a].ticks.color = tc;
+            c.options.scales[a].grid.color = gc;
+          }
+        });
+      }
+      c.update();
+    });
+  }
+
+  function toggleTheme() {
+    var light = !isLight();
+    applyTheme(light);
+    try { localStorage.setItem('scTheme', light ? 'light' : 'dark'); } catch (e) {}
+  }
+
+  // ── Sidebar Controls ──
+  function setSidebar(collapsed) {
+    if (isMobile()) collapsed = false;
+    document.body.classList.toggle('sb-collapsed', collapsed);
+    var toggleBtn = document.getElementById('sidebarToggle');
+    if (toggleBtn) toggleBtn.textContent = collapsed ? '▶' : '◀';
+    try { localStorage.setItem('scSidebar', collapsed ? '1' : '0'); } catch (e) {}
+  }
+
+  function toggleSidebar() { 
+    setSidebar(!document.body.classList.contains('sb-collapsed')); 
+  }
+
+  function toggleGroup() {
+    if (document.body.classList.contains('sb-collapsed')) { setSidebar(false); }
+    var group = document.getElementById('reportsGroup');
+    var sub = document.getElementById('reportsSub');
+    if (group) group.classList.toggle('open');
+    if (sub) sub.classList.toggle('open');
+  }
+
+  function toggleSubGroup(name) {
+    var grp = document.getElementById(name + 'Group');
+    var sub = document.getElementById(name + 'Sub');
+    if (grp) grp.classList.toggle('open');
+    if (sub) sub.classList.toggle('open');
+  }
+
+  function isMobile() { 
+    return window.matchMedia('(max-width: 768px)').matches; 
+  }
+
+  function toggleMobileNav() { 
+    document.body.classList.toggle('m-open'); 
+  }
+
+  // ── Page Navigation ──
+  function showPage(name) {
+    document.body.classList.remove('m-open');
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+    document.querySelectorAll('.nav-item').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.nav-sub-item').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.nav-nested-item').forEach(function(t){ t.classList.remove('active'); });
+
+    var targetPage = document.getElementById('page-' + name);
+    if (targetPage) targetPage.classList.add('active');
+
+    if (name === 'overview') document.getElementById('navOverview').classList.add('active');
+    if (name === 'preadhoc') document.getElementById('navPreAdhoc').classList.add('active');
+    if (name === 'xdpend') document.getElementById('navXdPend').classList.add('active');
+
+    var reportsGroup = document.getElementById('reportsGroup');
+    var reportsSub   = document.getElementById('reportsSub');
+
+    if (name !== 'overview' && name !== 'preadhoc' && name !== 'xdpend') {
+      if (reportsSub && !reportsSub.classList.contains('open')) {
+        if (reportsGroup) reportsGroup.classList.add('open');
+        reportsSub.classList.add('open');
+      }
+    }
+
+    if (['dod3pl', 'funcbreach', 'hygiene', 'repacking', 'fkmp', 'spillover'].indexOf(name) !== -1) {
+      var irtG = document.getElementById('irtGroup');
+      var irtS = document.getElementById('irtSub');
+      if (irtG) irtG.classList.add('open');
+      if (irtS) irtS.classList.add('open');
+      if (name === 'dod3pl') document.getElementById('navDod3pl').classList.add('active');
+      if (name === 'funcbreach') document.getElementById('navFuncBreach').classList.add('active');
+      if (name === 'hygiene') document.getElementById('navHygiene').classList.add('active');
+      if (name === 'repacking') document.getElementById('navRepacking').classList.add('active');
+      if (name === 'fkmp') document.getElementById('navFkmp').classList.add('active');
+      if (name === 'spillover') document.getElementById('navSpillover').classList.add('active');
+    }
+
+    if (name === 'hourly') {
+      document.getElementById('navHourly').classList.add('active');
+      var dhG = document.getElementById('dhGroup');
+      var dhS = document.getElementById('dhSub');
+      if (dhG) dhG.classList.add('open');
+      if (dhS) dhS.classList.add('open');
+    }
+
+    if (['ppmp', 'delay', 'dc12'].indexOf(name) !== -1) {
+      var thG = document.getElementById('thGroup');
+      var thS = document.getElementById('thSub');
+      if (thG) thG.classList.add('open');
+      if (thS) thS.classList.add('open');
+      if (name === 'ppmp') document.getElementById('navPpmp').classList.add('active');
+      if (name === 'delay') document.getElementById('navDelay').classList.add('active');
+      if (name === 'dc12') document.getElementById('navDc12').classList.add('active');
+    }
+  }
+
+  // ── Modal Handlers ──
+  function openDateModal() {
+    var modal = document.getElementById('dateShiftModal');
+    if (modal) modal.classList.add('active');
+  }
+
+  function closeDateModal() {
+    var modal = document.getElementById('dateShiftModal');
+    if (modal) modal.classList.remove('active');
+  }
+
+  function closeDateModalOnBackdrop(e) {
+    if (e.target.id === 'dateShiftModal') closeDateModal();
+  }
+
+  function submitHistoricalFetch() {
+    var dateVal = document.getElementById('histDate').value;
+    var shiftVal = document.getElementById('histShift').value;
+
+    if (!dateVal) {
+      alert('Please select a date.');
+      return;
+    }
+    closeDateModal();
+    loadHistoricalSnapshot(dateVal, shiftVal);
+  }
+
+
+  function loadHistoricalSnapshot(dateVal, shiftVal) {
+    currentMode = 'HISTORICAL';
+    isFetching = true;
+    document.getElementById('fetchTs').textContent = 'Loading records…';
+
+    fetch(API_URL + '?action=historical&date=' + dateVal + '&shift=' + shiftVal)
+      .then(function(response) { return response.json(); })
+      .then(function(res) {
+        isFetching = false;
+        if (!res || !res.ok) {
+          alert(res ? res.error : 'Records Not Found.');
+          switchToLiveMode();
+          return;
+        }
+
+        var badge = document.getElementById('modeBadge');
+        if (badge) {
+          badge.textContent = '📜 HISTORICAL';
+          badge.className = 'mode-badge hist';
+        }
+
+        var notice = document.getElementById('historicalNotice');
+        if (notice) {
+          notice.style.display = 'inline';
+          notice.textContent = dateVal + ' (' + shiftVal.toUpperCase() + ')';
+        }
+
+        var goLiveBtn = document.getElementById('btnGoLive');
+        if (goLiveBtn) goLiveBtn.style.display = 'inline-block';
+
+        renderDashboardWithData(res.data);
+        document.getElementById('fetchTs').textContent = 'Snapshot: ' + dateVal;
+      })
+      .catch(function(err) {
+        isFetching = false;
+        alert('Error loading records: ' + err.message);
+        switchToLiveMode();
+      });
+  }
+
+  function switchToLiveMode() {
+    currentMode = 'LIVE';
+
+    var badge = document.getElementById('modeBadge');
+    if (badge) {
+      badge.textContent = '● LIVE';
+      badge.className = 'mode-badge live';
+    }
+
+    var notice = document.getElementById('historicalNotice');
+    if (notice) notice.style.display = 'none';
+
+    var goLiveBtn = document.getElementById('btnGoLive');
+    if (goLiveBtn) goLiveBtn.style.display = 'none';
+
+    fetchData();
+  }
+
+  // ── Color Utilities ──
+  function colorClass(c) {
+    if (c === 'green') return 'cell-green';
+    if (c === 'red')   return 'cell-red';
+    if (c === 'amber') return 'cell-amber';
+    return '';
+  }
+
+  function updateRing(s) {
+    if (ring) ring.style.strokeDashoffset = circumference * (1 - s / INTERVAL);
+    var el = document.getElementById('countdownNum');
+    if (el) el.textContent = s;
+  }
+
+  // ── Chart.js Generator for Hourly Shift Performance ──
+  function makeChart(canvasId, existing, labels, data, label, color) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    var ctx = canvas.getContext('2d');
+    var bgColor = color.replace('rgb(', 'rgba(').replace(')', ',0.15)');
+    var tickColor = isLight() ? '#475569' : '#8a96b8';
+    var gridColor = isLight() ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.05)';
+
+    var isMaxRound = label === 'Max Round';
+
+    var pointColors = data.map(function(v) {
+      return (isMaxRound && v > 100) ? 'rgb(248,113,113)' : color;
+    });
+    var pointBorderColors = pointColors;
+
+    var segmentPlugin = isMaxRound ? {
+      segment: {
+        borderColor: function(ctxSeg) {
+          var p0 = data[ctxSeg.p0DataIndex];
+          var p1 = data[ctxSeg.p1DataIndex];
+          return (p0 > 100 || p1 > 100) ? 'rgb(248,113,113)' : color;
+        },
+        backgroundColor: function(ctxSeg) {
+          var p0 = data[ctxSeg.p0DataIndex];
+          var p1 = data[ctxSeg.p1DataIndex];
+          return (p0 > 100 || p1 > 100) ? 'rgba(248,113,113,0.25)' : bgColor;
+        }
+      }
+    } : {};
+
+    var datasetConfig = Object.assign({
+      label: label,
+      data: data,
+      borderColor: color,
+      backgroundColor: bgColor,
+      fill: true,
+      tension: 0.35,
+      borderWidth: 2.5,
+      pointBackgroundColor: pointColors,
+      pointBorderColor: pointBorderColors,
+      pointRadius: 5,
+      pointHoverRadius: 7
+    }, segmentPlugin);
+
+    var opts = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: tickColor, font: { size: 11 } } }
+      },
+      scales: {
+        x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
+        y: {
+          ticks: { color: tickColor, font: { size: 10 } },
+          grid: { color: gridColor },
+          afterDataLimits: isMaxRound ? function(scale) {
+            scale.max = Math.max(scale.max, 110);
+          } : undefined
+        }
+      }
+    };
+
+    if (existing) {
+      existing.destroy();
+    }
+
+    return new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [datasetConfig] }, options: opts });
+  }
+
+  // ── Component Renderers ──
+  function buildHourlyTable(titleId, headId, bodyId, footId, block) {
+    if (!block) return;
+    var titleEl = document.getElementById(titleId);
+    if (titleEl) titleEl.textContent = block.title || '';
+    
+    var headEl = document.getElementById(headId);
+    if (headEl) {
+      headEl.innerHTML = '<tr>' + (block.headers || []).map(function(h){ return '<th>' + (h || '—') + '</th>'; }).join('') + '</tr>';
+    }
+
+    var bodyEl = document.getElementById(bodyId);
+    if (bodyEl) {
+      bodyEl.innerHTML = (block.rows || []).map(function(row){
+        if (!row || row.every(function(c){ return !c.v; })) return '';
+        return '<tr>' + row.map(function(cell){
+          return '<td class="' + colorClass(cell.color) + '">' + (cell.v || '') + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+    }
+
+    var footEl = document.getElementById(footId);
+    if (footEl) {
+      footEl.innerHTML = '<tr>' + (block.totals || []).map(function(cell){
+        return '<td class="' + colorClass(cell.color) + '">' + (cell.v || '') + '</td>';
+      }).join('') + '</tr>';
+    }
+  }
+
+  function renderHourly(d) {
+    if (!d.hourlyOk) return;
+
+    buildHourlyTable('dayTitle1',   'dayHead1',   'dayBody1',   'dayFoot1',   d.dayTable1);
+    buildHourlyTable('dayTitle2',   'dayHead2',   'dayBody2',   'dayFoot2',   d.dayTable2);
+    buildHourlyTable('nightTitle1', 'nightHead1', 'nightBody1', 'nightFoot1', d.nightTable1);
+    buildHourlyTable('nightTitle2', 'nightHead2', 'nightBody2', 'nightFoot2', d.nightTable2);
+
+    if (d.dayChartData && d.dayChartData.labels && d.dayChartData.labels.length > 0) {
+      dayPvaChart      = makeChart('dayPvaChart',      dayPvaChart,      d.dayChartData.labels, d.dayChartData.pva,      'Hourly PVA', 'rgb(56,189,248)');
+      dayMaxRoundChart = makeChart('dayMaxRoundChart', dayMaxRoundChart, d.dayChartData.labels, d.dayChartData.maxRound, 'Max Round',  'rgb(251,191,36)');
+    }
+
+    if (d.nightChartData && d.nightChartData.labels && d.nightChartData.labels.length > 0) {
+      nightPvaChart      = makeChart('nightPvaChart',      nightPvaChart,      d.nightChartData.labels, d.nightChartData.pva,      'Hourly PVA', 'rgb(167,139,250)');
+      nightMaxRoundChart = makeChart('nightMaxRoundChart', nightMaxRoundChart, d.nightChartData.labels, d.nightChartData.maxRound, 'Max Round',  'rgb(52,211,153)');
+    }
+  }
+
+function renderHygieneReport(d) {
+  if (!d.hygieneOk) {
+    var warn = document.getElementById('hygieneWarn');
+    if (warn) warn.textContent = d.hygieneError || 'Error fetching Hygiene Report data';
+    return;
+  }
+
+  var headers = d.hygieneHeaders || [];
+  var rows = d.hygieneRows || [];
+  var totals = d.hygieneTotals || [];
+  var HYGIENE_URL = "https://docs.google.com/spreadsheets/d/1CXAcH4_iDyW2HmP_aeWK_iRoXcUfOJtzNLLL3aQt2r8/edit#gid=375727822";
+
+  // Dynamic Summary KPI Header Cards
+  var kpiContainer = document.getElementById('hygieneKpiContainer');
+  if (kpiContainer && totals.length > 12) {
+    var cardColors = ['blue', 'teal', 'purple', 'amber', 'green', 'red'];
+    
+    // Group 1: 7 Aging Buckets (Cols C to I / Index 2 to 8)
+    var agingHtml = '';
+    for (var c = 2; c <= 8; c++) {
+      var label = headers[c] || ('Metric ' + String.fromCharCode(65 + c));
+      var val = typeof totals[c] === 'object' ? (totals[c].v || '0') : (totals[c] || '0');
+      var color = cardColors[(c - 2) % cardColors.length];
+      var isAlert = (c === 8); // 24+ bucket
+
+      agingHtml += '<div class="card glass ' + color + ' clickable-card ' + (isAlert ? 'card-alert' : '') + '" data-url="' + HYGIENE_URL + '">' +
+                     '<div class="card-label">' + label + '</div>' +
+                     '<div class="card-value">' + val + '</div>' +
+                     '<div class="card-sub">Grand Total</div>' +
+                   '</div>';
+    }
+
+    // Group 2: 4 Summary Metrics (Cols J to M / Index 9 to 12)
+    var summaryHtml = '';
+    for (var c = 9; c <= 12; c++) {
+      var label = headers[c] || ('Metric ' + String.fromCharCode(65 + c));
+      var val = typeof totals[c] === 'object' ? (totals[c].v || '0') : (totals[c] || '0');
+      var color = cardColors[(c - 2) % cardColors.length];
+
+      summaryHtml += '<div class="card glass ' + color + ' clickable-card" data-url="' + HYGIENE_URL + '">' +
+                       '<div class="card-label">' + label + '</div>' +
+                       '<div class="card-value">' + val + '</div>' +
+                       '<div class="card-sub">Grand Total</div>' +
+                     '</div>';
+    }
+
+    // Two clean responsive rows: 7 equal cards on Row 1, 4 equal cards on Row 2
+    kpiContainer.style.display = 'flex';
+    kpiContainer.style.flexDirection = 'column';
+    kpiContainer.style.gap = '14px';
+    kpiContainer.innerHTML = 
+      '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">' + agingHtml + '</div>' +
+      '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">' + summaryHtml + '</div>';
+  }
+
+  // Detailed Breakdown Table Headers
+  var headEl = document.getElementById('hygieneHead');
+  if (headEl && headers.length > 0) {
+    headEl.innerHTML = '<tr>' + headers.map(function(h) { return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+  }
+
+  // Detailed Breakdown Table Body
+  var bodyEl = document.getElementById('hygieneBody');
+  if (bodyEl && rows.length > 0) {
+    bodyEl.innerHTML = rows.map(function(row) {
+      return '<tr>' + row.map(function(cell, idx) {
+        var textVal = typeof cell === 'object' ? (cell.v || '') : (cell !== null && cell !== undefined ? cell : '');
+        var cls = (typeof cell === 'object' && cell.color) ? colorClass(cell.color) : '';
+        var style = (idx === 0) ? 'font-weight:600; color:#ffffff;' : '';
+        return '<td class="' + cls + '" style="' + style + '">' + textVal + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+  } else if (bodyEl) {
+    bodyEl.innerHTML = '<tr><td colspan="16" style="text-align:center;color:#5c6890;padding:20px;">No records found</td></tr>';
+  }
+
+  // Table Footer Totals
+  var footEl = document.getElementById('hygieneFoot');
+  if (footEl && totals.length > 0) {
+    footEl.innerHTML = '<tr>' + totals.map(function(cell) {
+      var textVal = typeof cell === 'object' ? (cell.v || '') : (cell !== null && cell !== undefined ? cell : '');
+      var cls = (typeof cell === 'object' && cell.color) ? colorClass(cell.color) : '';
+      return '<td class="' + cls + '">' + textVal + '</td>';
+    }).join('') + '</tr>';
+  }
+
+  var warnEl = document.getElementById('hygieneWarn');
+  if (warnEl) warnEl.textContent = '';
+}
+
+  function updateFbChart(funcVal, potVal, actVal) {
+    var ctx = document.getElementById('fbDoughnutChart');
+    if (!ctx) return;
+
+    if (fbDoughnutChart) {
+      fbDoughnutChart.destroy();
+    }
+
+    fbDoughnutChart = new Chart(ctx.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Functional', 'Potential', 'Actual'],
+        datasets: [{
+          data: [funcVal, potVal, actVal],
+          backgroundColor: ['rgba(56, 189, 248, 0.8)', 'rgba(251, 191, 36, 0.8)', 'rgba(248, 113, 113, 0.8)'],
+          borderColor: ['#38bdf8', '#fbbf24', '#f87171'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        cutout: '70%'
+      }
+    });
+  }
+
+  function renderFuncBreach(d) {
+    if (!d.fbOk) {
+      var warn = document.getElementById('fbWarn');
+      if (warn) warn.textContent = d.fbError || 'Error fetching Functional Breach data';
+      return;
+    }
+
+    var badge = document.getElementById('fbDateBadge');
+    var label = document.getElementById('fbDateLabel');
+    if (badge && label) {
+      if (d.fbDateTag === 'yesterday') {
+        badge.className = 'date-badge yesterday';
+        label.textContent = '✓ Yesterday · ' + d.fbDateStr;
+      } else {
+        badge.className = 'date-badge fallback';
+        label.textContent = '⚠ Date (' + d.fbDateTag + ') · ' + d.fbDateStr;
+      }
+    }
+
+    var headEl = document.getElementById('fbTableHead');
+    if (headEl && d.fbHeaders && d.fbHeaders.length > 0) {
+      headEl.innerHTML = '<tr>' + d.fbHeaders.map(function(h) { return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+    }
+
+    var bodyEl = document.getElementById('fbTableBody');
+    var rows = d.fbRows || [];
+    if (bodyEl && rows.length > 0) {
+      bodyEl.innerHTML = rows.map(function(row) {
+        return '<tr>' + row.map(function(cell) {
+          return '<td>' + (cell !== null && cell !== undefined ? cell : '') + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+    } else if (bodyEl) {
+      bodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#5c6890;padding:24px;">No records available</td></tr>';
+    }
+
+    var footEl = document.getElementById('fbTableFoot');
+    if (footEl) footEl.innerHTML = '';
+
+    var totals = d.fbTotals || [];
+    if (totals.length > 0) {
+      var countTotals = totals[0];
+      if (countTotals && countTotals.length >= 6) {
+        document.getElementById('fbValFunc').textContent = countTotals[3] || '0';
+        document.getElementById('fbValPot').textContent  = countTotals[4] || '0';
+        document.getElementById('fbValAct').textContent  = countTotals[5] || '0';
+
+        var vFunc = parseFloat(String(countTotals[3]).replace(/,/g, '')) || 0;
+        var vPot  = parseFloat(String(countTotals[4]).replace(/,/g, '')) || 0;
+        var vAct  = parseFloat(String(countTotals[5]).replace(/,/g, '')) || 0;
+        updateFbChart(vFunc, vPot, vAct);
+      }
+
+      if (totals.length >= 2) {
+        var pctTotals = totals[1];
+        var funcPct = (pctTotals[3] !== null && pctTotals[3] !== undefined) ? pctTotals[3].toString().trim() : '0%';
+        var potPct  = (pctTotals[4] !== null && pctTotals[4] !== undefined) ? pctTotals[4].toString().trim() : '0%';
+        var actPct  = (pctTotals[5] !== null && pctTotals[5] !== undefined) ? pctTotals[5].toString().trim() : '0%';
+
+        document.getElementById('fbPctFunc').textContent = '(' + funcPct + ')';
+        document.getElementById('fbPctPot').textContent  = '(' + potPct + ')';
+        document.getElementById('fbPctAct').textContent  = '(' + actPct + ')';
+      }
+    }
+    var warnEl = document.getElementById('fbWarn');
+    if (warnEl) warnEl.textContent = '';
+  }
+
+  function renderXdPendency(d) {
+    if (!d.xdOk) {
+      var warn = document.getElementById('xdWarn');
+      if (warn) warn.textContent = d.xdError || 'Error loading XD Pendency data';
+      return;
+    }
+    var warnEl = document.getElementById('xdWarn');
+    if (warnEl) warnEl.textContent = '';
+
+    var h = d.xdHeaders || [], rows = d.xdRows || [], t = d.xdTotals || [];
+    var STOPS = [
+      { p: 0,    c: [34, 197, 94]  },
+      { p: 0.25, c: [132, 204, 22] },
+      { p: 0.5,  c: [250, 204, 21] },
+      { p: 0.75, c: [249, 115, 22] },
+      { p: 1,    c: [239, 68, 68]  }
+    ];
+
+    function colorAt(tv) {
+      for (var i = 1; i < STOPS.length; i++) {
+        if (tv <= STOPS[i].p) {
+          var a = STOPS[i - 1], b = STOPS[i], f = (tv - a.p) / (b.p - a.p);
+          return a.c.map(function(v, k) { return Math.round(v + (b.c[k] - v) * f); });
+        }
+      }
+      return STOPS[STOPS.length - 1].c;
+    }
+
+    var headEl = document.getElementById('xdHead');
+    if (headEl) {
+      headEl.innerHTML = '<tr>' + h.map(function(x) { return '<th>' + (x || '') + '</th>'; }).join('') + '</tr>';
+    }
+
+    var bodyEl = document.getElementById('xdBody');
+    if (bodyEl) {
+      bodyEl.innerHTML = rows.length
+        ? rows.map(function(r) {
+            return '<tr>' + r.map(function(c, i) {
+              return '<td' + (i === 0 ? ' style="font-weight:600;"' : '') + '>' + (c || '') + '</td>';
+            }).join('') + '</tr>';
+          }).join('')
+        : '<tr><td colspan="' + (h.length || 1) + '" style="text-align:center;color:#5c6890;padding:20px;">No records available</td></tr>';
+    }
+
+    var footEl = document.getElementById('xdFoot');
+    if (footEl) {
+      footEl.innerHTML = t.length ? '<tr>' + t.map(function(c) { return '<td>' + (c || '') + '</td>'; }).join('') + '</tr>' : '';
+    }
+
+    var KPI_FIRST = 2, KPI_LAST = 8;
+    var XD_URL = 'https://docs.google.com/spreadsheets/d/1dC7msA00KH4wi3IccUE56Bo2KswmSE53SjCO7a-oXwk/edit?gid=249195533#gid=249195533';
+    var kpiHtml = '';
+    if (t.length) {
+      for (var k = KPI_FIRST; k <= KPI_LAST && k < t.length; k++) {
+        var rgb = colorAt((k - KPI_FIRST) / (KPI_LAST - KPI_FIRST)).join(',');
+        kpiHtml += '<div class="card glass clickable-card" data-url="' + XD_URL + '" style="--accent: rgb(' + rgb + ');">' +
+                   '<div class="card-label">' + (h[k] || ('Col ' + String.fromCharCode(65 + k))) + '</div>' +
+                   '<div class="card-value">' + (t[k] || '0') + '</div>' +
+                   '<div class="card-sub"></div>' +
+                   '</div>';
+      }
+    }
+    var gridEl = document.getElementById('xdKpiGrid');
+    if (gridEl) gridEl.innerHTML = kpiHtml;
+  }
+
+  function renderSpilloverDetails(d) {
+  if (!d || !d.spilloverOk) {
+    var warn = document.getElementById('spilloverWarn');
+    if (warn) warn.textContent = (d && d.spilloverError) ? d.spilloverError : 'Error loading Spillover Details data';
+    return;
+  }
+
+  var headers = d.spilloverHeaders || [];
+  var currentRows = d.spilloverCurrentRows || [];
+
+  // Update title with active month and status
+  var statusNote = d.spilloverTodayMatched ? ' (Today Matched)' : ' (Showing Active Month)';
+  var titleEl = document.getElementById('spilloverCurrentMonthTitle');
+  if (titleEl) titleEl.textContent = (d.spilloverCurrentMonthName || 'Current Month') + statusNote;
+
+  // Render Table Headers
+  var headEl = document.getElementById('spilloverTableHead');
+  if (headEl && headers.length > 0) {
+    headEl.innerHTML = '<tr>' + headers.map(function(h) { return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+  }
+
+  // Render Current Month Records Only
+  var bodyEl = document.getElementById('spilloverTableBody');
+  if (bodyEl && currentRows.length > 0) {
+    bodyEl.innerHTML = currentRows.map(function(row) {
+      return '<tr>' + row.map(function(cell, idx) {
+        var style = (idx === 0 || idx === 1) ? 'font-weight:600; color:#ffffff;' : '';
+        return '<td style="' + style + '">' + (cell !== null && cell !== undefined ? cell : '') + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+  } else if (bodyEl) {
+    bodyEl.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#5c6890;padding:20px;">No records found for ongoing month</td></tr>';
+  }
+
+  var warnEl = document.getElementById('spilloverWarn');
+  if (warnEl) warnEl.textContent = '';
+}
+  function renderFkmpSummary(d) {
+    if (!d.fkmpOk) {
+      var warn = document.getElementById('fkmpWarn');
+      if (warn) warn.textContent = d.fkmpError || 'Error loading FKMP Summary data';
+      return;
+    }
+
+    var headers = d.fkmpHeaders || [];
+    var currentRows = d.fkmpCurrentRows || [];
+    var monthlyTotals = d.fkmpMonthlyTotals || [];
+    var SHEET_URL = "https://docs.google.com/spreadsheets/d/1CXAcH4_iDyW2HmP_aeWK_iRoXcUfOJtzNLLL3aQt2r8/edit#gid=1528009332";
+
+    var titleEl = document.getElementById('fkmpCurrentMonthTitle');
+    if (titleEl) titleEl.textContent = d.fkmpCurrentMonthName || 'Current Month';
+
+    var headEl = document.getElementById('fkmpTableHead');
+    if (headEl && headers.length > 0) {
+      headEl.innerHTML = '<tr>' + headers.map(function(h) { return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+    }
+
+    var bodyEl = document.getElementById('fkmpTableBody');
+    if (bodyEl && currentRows.length > 0) {
+      bodyEl.innerHTML = currentRows.map(function(row) {
+        return '<tr>' + row.map(function(cell, idx) {
+          var style = (idx === 0) ? 'font-weight:600; color:#ffffff;' : '';
+          return '<td style="' + style + '">' + (cell !== null && cell !== undefined ? cell : '') + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+    } else if (bodyEl) {
+      bodyEl.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#5c6890;padding:20px;">No records found for ongoing month</td></tr>';
+    }
+
+    var monthlyContainer = document.getElementById('fkmpMonthlyContainer');
+    if (monthlyContainer && monthlyTotals.length > 0) {
+      var cardColors = ['blue', 'teal', 'purple', 'amber', 'green', 'red'];
+      var html = '';
+
+      monthlyTotals.forEach(function(m) {
+        html += '<div style="margin-bottom: 22px;">' +
+                '<div style="font-size: 13px; font-weight: 700; color: #38bdf8; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">' +
+                '<span>📅 ' + m.monthName + '</span> Total Summary</div><div class="grid">';
+
+        for (var c = 1; c <= 6; c++) {
+          var metricName = headers[c] || ('Col ' + String.fromCharCode(65 + c));
+          var sumValue = Math.round(m.sums[c - 1]).toLocaleString();
+          var color = cardColors[(c - 1) % cardColors.length];
+
+          html += '<div class="card glass ' + color + ' clickable-card" data-url="' + SHEET_URL + '">' +
+                  '<div style="font-size: 11px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px;">' + metricName + '</div>' +
+                  '<div class="card-value" style="font-size: 30px; font-weight: 800; color: #ffffff; line-height: 1;">' + sumValue + '</div>' +
+                  '<div style="font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 8px;">' + m.monthName + ' Total</div></div>';
+        }
+        html += '</div></div>';
+      });
+      monthlyContainer.innerHTML = html;
+    } else if (monthlyContainer) {
+      monthlyContainer.innerHTML = '<div style="color:#5c6890;font-size:13px;padding:12px;">No monthly summary data available</div>';
+    }
+
+    var warnEl = document.getElementById('fkmpWarn');
+    if (warnEl) warnEl.textContent = '';
+  }
+
+  function renderWfSparing(d) {
+    var subEl = document.getElementById('sparedWfSub');
+    if (subEl) subEl.textContent = d.wfShift ? (d.wfShift === 'day' ? 'Day shift' : 'Night shift') : '';
+    
+    var wfCountEl = document.getElementById('sparedWf');
+    if (wfCountEl) wfCountEl.textContent = d.wfOk ? Number(d.wfTotal || 0).toLocaleString() : '—';
+    
+    var body = document.getElementById('wfBody');
+    if (!d.wfOk) {
+      var warn = document.getElementById('wfWarn');
+      if (warn) warn.textContent = d.wfError || 'Error loading WF Sparing data';
+      return;
+    }
+    var warnEl = document.getElementById('wfWarn');
+    if (warnEl) warnEl.textContent = '';
+
+    if (body) {
+      body.innerHTML = (d.wfRows && d.wfRows.length)
+        ? d.wfRows.map(function(r) { return '<tr>' + r.map(function(c) { return '<td>' + (c || '') + '</td>'; }).join('') + '</tr>'; }).join('')
+        : '<tr><td colspan="5" style="text-align:center;color:#5c6890;padding:16px;">No HUB records found</td></tr>';
+    }
+  }
+
+  function renderPreAdhocPlan(d) {
+    var grid = document.getElementById('preAdhocGrid');
+    if (!d.preAdhocOk) {
+      var warn = document.getElementById('preAdhocWarn');
+      if (warn) warn.textContent = d.preAdhocError || 'Error loading data';
+      return;
+    }
+    var warnEl = document.getElementById('preAdhocWarn');
+    if (warnEl) warnEl.textContent = '';
+
+    var URL = 'https://docs.google.com/spreadsheets/d/18v81TP0lKZ9GbOMkqx3jhOF8DsIBI4kNg6FHtIna55Q/edit?gid=1831340504#gid=1831340504';
+    var cards = d.preAdhocCards || [];
+    var n = cards.length;
+
+    var STOPS = [
+      { p: 0,    c: [239, 68, 68]  },
+      { p: 0.25, c: [249, 115, 22] },
+      { p: 0.5,  c: [250, 204, 21] },
+      { p: 0.75, c: [132, 204, 22] },
+      { p: 1,    c: [21, 128, 61]  }
+    ];
+
+    function colorAt(t) {
+      for (var i = 1; i < STOPS.length; i++) {
+        if (t <= STOPS[i].p) {
+          var a = STOPS[i - 1], b = STOPS[i];
+          var f = (t - a.p) / (b.p - a.p);
+          return a.c.map(function(v, k) { return Math.round(v + (b.c[k] - v) * f); });
+        }
+      }
+      return STOPS[STOPS.length - 1].c;
+    }
+
+    if (grid) {
+      grid.innerHTML = n
+        ? cards.map(function(c, i) {
+            var rgb = colorAt(n === 1 ? 0 : i / (n - 1)).join(',');
+            return '<div class="card glass clickable-card" data-url="' + URL + '" style="--accent: rgb(' + rgb + ');">' +
+                   '<div class="card-label">' + (c.b || '—') + '</div>' +
+                   '<div class="card-value">' + (c.m || '—') + '</div>' +
+                   '<div class="pre-c">' + (c.c || '—') + '</div>' +
+                   '</div>';
+          }).join('')
+        : '<div style="color:#5c6890;font-size:13px;padding:12px;">No rows above 2000</div>';
+    }
+  }
+
+  function renderRepacking(d) {
+    if (!d.repackingOk) {
+      var warn = document.getElementById('repackingWarn');
+      if (warn) warn.textContent = d.repackingError || 'Error loading Repacking data';
+      return;
+    }
+
+    var dateLabel = document.getElementById('repackingDateLabel');
+    if (dateLabel) {
+      dateLabel.textContent = '✓ Data Date · ' + (d.repackingDateStr || '—');
+    }
+
+    var cards = d.repackingCards || [];
+    var SHEET_URL = "https://docs.google.com/spreadsheets/d/1CXAcH4_iDyW2HmP_aeWK_iRoXcUfOJtzNLLL3aQt2r8/edit#gid=949749687";
+    var colors = ['blue', 'purple', 'teal', 'amber', 'green', 'red'];
+
+    function buildCardsHtml(cardList, colorOffset) {
+      if (!cardList || cardList.length === 0) {
+        return '<div style="color:#5c6890;font-size:13px;padding:12px;">No data available</div>';
+      }
+      return cardList.map(function(item, idx) {
+        var color = colors[(idx + colorOffset) % colors.length];
+        var subText = item.category ? item.category : ('Row ' + item.rowNum);
+        var labelUpper = (item.label || '').toUpperCase();
+
+        return '<div class="card glass ' + color + ' clickable-card" data-url="' + SHEET_URL + '">' +
+               '<div style="font-size: 11px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px;">' + labelUpper + '</div>' +
+               '<div class="card-value" style="font-size: 30px; font-weight: 800; color: #ffffff; line-height: 1;">' + item.value + '</div>' +
+               '<div style="font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 8px;">' + subText + '</div></div>';
+      }).join('');
+    }
+
+    var group1 = cards.filter(function(c) { return c.rowNum >= 2 && c.rowNum <= 6; });
+    if (group1.length > 0 && group1[0].category) {
+      var catTitle = document.getElementById('repackingCatTitle');
+      if (catTitle) catTitle.textContent = group1[0].category;
+    }
+    var g1 = document.getElementById('repackingGroup1'); if (g1) g1.innerHTML = buildCardsHtml(group1, 0);
+    var g2 = document.getElementById('repackingGroup2'); if (g2) g2.innerHTML = buildCardsHtml(cards.filter(function(c) { return c.rowNum >= 7 && c.rowNum <= 10; }), 1);
+    var g3 = document.getElementById('repackingGroup3'); if (g3) g3.innerHTML = buildCardsHtml(cards.filter(function(c) { return c.rowNum >= 11 && c.rowNum <= 17; }), 2);
+    var g4 = document.getElementById('repackingGroup4'); if (g4) g4.innerHTML = buildCardsHtml(cards.filter(function(c) { return c.rowNum >= 18 && c.rowNum <= 21; }), 3);
+
+    var warnEl = document.getElementById('repackingWarn');
+    if (warnEl) warnEl.textContent = '';
+  }
+
+  function render12DcDetails(d) {
+    if (!d.dc12Ok) {
+      var warn = document.getElementById('dc12Warn');
+      if (warn) warn.textContent = d.dc12Error || 'Error loading 12 DC Details data';
+      return;
+    }
+
+    function fillDcTable(titleId, headId, bodyId, footId, block) {
+      if (!block) return;
+      var titleEl = document.getElementById(titleId);
+      if (titleEl && block.title) titleEl.textContent = block.title;
+
+      var headEl = document.getElementById(headId);
+      var bodyEl = document.getElementById(bodyId);
+      var footEl = document.getElementById(footId);
+
+      if (block.headers && block.headers.length > 0 && headEl) {
+        headEl.innerHTML = '<tr>' + block.headers.map(function(h){ return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+      }
+
+      var rowsData = block.rows || [];
+      var validRows = rowsData.filter(function(r){
+        var cells = r.cells || r;
+        return cells.some(function(c){ return c !== ''; });
+      });
+
+      if (validRows.length > 0 && bodyEl) {
+        bodyEl.innerHTML = validRows.map(function(rObj){
+          var colorClass = rObj.colorClass || '';
+          var cells = rObj.cells || rObj;
+          return '<tr class="' + colorClass + '">' + cells.map(function(cell){
+            return '<td>' + (cell !== null && cell !== undefined ? cell : '') + '</td>';
+          }).join('') + '</tr>';
+        }).join('');
+      } else if (bodyEl) {
+        bodyEl.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#5c6890;padding:20px;">No records available</td></tr>';
+      }
+
+      if (block.totals && block.totals.length > 0 && footEl) {
+        footEl.innerHTML = '<tr>' + block.totals.map(function(t){ return '<td>' + (t || '') + '</td>'; }).join('') + '</tr>';
+      }
+    }
+
+    fillDcTable('dc12Title1', 'dc12Head1', 'dc12Body1', 'dc12Foot1', d.dc12Block1);
+    fillDcTable('dc12Title2', 'dc12Head2', 'dc12Body2', 'dc12Foot2', d.dc12Block2);
+    var warnEl = document.getElementById('dc12Warn');
+    if (warnEl) warnEl.textContent = '';
+  }
+
+  function render3PlDod(d) {
+    if (!d.dod3plOk) {
+      var warn = document.getElementById('dod3plWarn');
+      if (warn) warn.textContent = d.dodError || 'Error fetching 3 PL DOD data';
+      return;
+    }
+
+    function fillTable(headId, bodyId, headers, rows) {
+      var headEl = document.getElementById(headId);
+      var bodyEl = document.getElementById(bodyId);
+
+      if (headers && headers.length > 0 && headEl) {
+        headEl.innerHTML = '<tr>' + headers.map(function(h){ return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+      }
+
+      var validRows = (rows || []).filter(function(r){
+        return r.some(function(c){
+          var val = typeof c === 'object' ? c.v : c;
+          return val !== '';
+        });
+      });
+
+      if (validRows.length > 0 && bodyEl) {
+        bodyEl.innerHTML = validRows.map(function(row){
+          return '<tr>' + row.map(function(cell){
+            var textVal = typeof cell === 'object' ? (cell.v || '') : (cell !== null && cell !== undefined ? cell : '');
+            var cls = (typeof cell === 'object' && cell.color) ? colorClass(cell.color) : '';
+            return '<td class="' + cls + '">' + textVal + '</td>';
+          }).join('') + '</tr>';
+        }).join('');
+      } else if (bodyEl) {
+        bodyEl.innerHTML = '<tr><td colspan="' + (headers.length || 9) + '" style="text-align:center;color:#5c6890;padding:20px;">No records available</td></tr>';
+      }
+    }
+
+    fillTable('deTableHead', 'deTableBody', d.dodDeHeaders, d.dodDeRows);
+    fillTable('sfTableHead', 'sfTableBody', d.dodSfHeaders, d.dodSfRows);
+    var warnEl = document.getElementById('dod3plWarn');
+    if (warnEl) warnEl.textContent = '';
+  }
+
+  function renderFteList(listId, countId, names) {
+    var countEl = document.getElementById(countId);
+    if (countEl) countEl.textContent = names.length;
+    var listEl = document.getElementById(listId);
+    if (listEl) {
+      listEl.innerHTML = names.length === 0
+        ? '<div class="fte-empty">None</div>'
+        : names.map(function(n){ return '<div class="fte-name"><span class="fte-dot"></span>' + n + '</div>'; }).join('');
+    }
+  }
+
+  function renderLaneChips(chipsId, countId, lanes) {
+    var countEl = document.getElementById(countId);
+    if (countEl) countEl.textContent = lanes.length;
+    var chipsEl = document.getElementById(chipsId);
+    if (chipsEl) {
+      chipsEl.innerHTML = lanes.length === 0
+        ? '<div style="font-size:12px;color:#4c5878;font-style:italic;">No lanes</div>'
+        : lanes.map(function(l){ return '<span class="lane-chip">' + l + '</span>'; }).join('');
+    }
+  }
+
+  function renderDelay(d) {
+    var total = Number(d.ddTotalDN) || 1;
+    [
+      { val: 'val030',  bar: 'bar030',  v: Number(d.ddDelay030)  || 0 },
+      { val: 'val3060', bar: 'bar3060', v: Number(d.ddDelay3060) || 0 },
+      { val: 'val6120', bar: 'bar6120', v: Number(d.ddDelay6120) || 0 },
+      { val: 'val120p', bar: 'bar120p', v: Number(d.ddDelay120p) || 0 }
+    ].forEach(function(item){
+      var vEl = document.getElementById(item.val);
+      var bEl = document.getElementById(item.bar);
+      if (vEl) vEl.textContent = item.v;
+      if (bEl) bEl.style.width = Math.min(100, Math.round(item.v / total * 100)) + '%';
+    });
+  }
+
+  function renderPpmp(d) {
+    // 1. Toggle the Banner Visibility
+    var banner = document.getElementById('ppmpDisabledBanner');
+    if (banner) {
+      banner.style.display = d.ppmpDisabled ? 'block' : 'none';
+    }
+
+    // 2. Render Cards & Text
+    var dateLabel = document.getElementById('ppmpDateLabel');
+    if (dateLabel) dateLabel.textContent = d.ppmpDate || '—';
+
+    var procEl = document.getElementById('ppmpProcessed');
+    if (procEl) procEl.textContent = Number(d.ppmpProcessed || 0).toLocaleString();
+
+    var cdEl = document.getElementById('ppmpCrossDock');
+    if (cdEl) cdEl.textContent = Number(d.ppmpCrossDock || 0).toLocaleString();
+
+    var pendEl = document.getElementById('ppmpPending');
+    if (pendEl) pendEl.textContent = Number(d.ppmpPending || 0).toLocaleString();
+
+    var totEl = document.getElementById('ppmpTotal');
+    if (totEl) totEl.textContent = (d.ppmpData ? d.ppmpData.length : 0).toLocaleString();
+
+    // 3. Render Table
+    var ppmpHead = document.getElementById('ppmpTableHead');
+    var headers  = d.ppmpHeaders || [];
+    if (ppmpHead && headers.length > 0) {
+      ppmpHead.innerHTML = '<tr>' + headers.map(function(h){ return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+    }
+
+    var ppmpBody = document.getElementById('ppmpTableBody');
+    if (ppmpBody && d.ppmpData && d.ppmpData.length > 0) {
+      ppmpBody.innerHTML = d.ppmpData.map(function(row){
+        return '<tr>' + row.map(function(cell){
+          return '<td>' + (cell !== null && cell !== undefined ? cell : '') + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+      var warn = document.getElementById('ppmpWarn');
+      if (warn) warn.textContent = '';
+    } else if (ppmpBody) {
+      // If disabled or empty, display a clean "No records" message
+      var msg = d.ppmpDisabled ? 'PPMP is currently offline' : ('No records found for ' + (d.ppmpDate || 'today'));
+      ppmpBody.innerHTML = '<tr><td colspan="' + (headers.length || 30) + '" style="text-align:center;color:#5c6890;padding:24px;">' + msg + '</td></tr>';
+      
+      var warnEl = document.getElementById('ppmpWarn');
+      if (warnEl) warnEl.textContent = d.ppmpError || '';
+    }
+  }
+
+  (function initSidebarResizer() {
+  const resizer = document.getElementById('sidebarResizer');
+  if (!resizer) return;
+
+  const MIN_WIDTH = 180; // Minimum allowed width in px
+  const MAX_WIDTH = 450; // Maximum allowed width in px
+
+  // Restore saved width on page load
+  try {
+    const savedWidth = localStorage.getItem('scSidebarWidth');
+    if (savedWidth && !document.body.classList.contains('sb-collapsed')) {
+      const width = Math.min(Math.max(parseInt(savedWidth, 10), MIN_WIDTH), MAX_WIDTH);
+      document.documentElement.style.setProperty('--sidebar-width', width + 'px');
+    }
+  } catch (e) {}
+
+  let isDragging = false;
+
+  resizer.addEventListener('mousedown', function(e) {
+    // Disable resizing if sidebar is collapsed or in mobile view
+    if (document.body.classList.contains('sb-collapsed') || window.innerWidth <= 768) return;
+    
+    isDragging = true;
+    document.body.classList.add('is-resizing');
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+
+    let newWidth = e.clientX;
+
+    // Enforce constraints
+    if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH;
+    if (newWidth > MAX_WIDTH) newWidth = MAX_WIDTH;
+
+    document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
+  });
+
+  window.addEventListener('mouseup', function() {
+    if (!isDragging) return;
+
+    isDragging = false;
+    document.body.classList.remove('is-resizing');
+
+    // Persist new width
+    const currentWidth = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim();
+    try {
+      localStorage.setItem('scSidebarWidth', parseInt(currentWidth, 10));
+    } catch (e) {}
+  });
+})();
+
+function fetchQuickScans() {
+    if (currentMode === 'HISTORICAL') return;
+
+    fetch(API_URL + '?action=quickScans')
+      .then(function(response) { return response.json(); })
+      .then(function(res) {
+        if (!res || !res.ok) return;
+
+        document.getElementById('manpower').textContent = res.manpower;
+        document.getElementById('floorScan').textContent = 
+          res.floorScanCount !== undefined ? Number(res.floorScanCount).toLocaleString() : '—';
+
+        var hr = parseFloat(String(res.manpower).replace(/,/g, ''));
+        var sparedEl = document.getElementById('sparedWf');
+        var spared = parseFloat(String(sparedEl ? sparedEl.textContent : 0).replace(/,/g, '')) || 0;
+        var avEl = document.getElementById('availability');
+        var avCard = document.getElementById('availCard');
+
+        if (avCard && avEl) {
+          avCard.classList.remove('avail-yellow', 'avail-lightgreen', 'avail-green');
+          if (!isNaN(hr)) {
+            var pct = Math.round((hr - spared) / 205 * 100);
+            avEl.textContent = pct + '%';
+            avCard.classList.add(pct < 90 ? 'avail-yellow' : (pct < 100 ? 'avail-lightgreen' : 'avail-green'));
+          }
+        }
+      })
+      .catch(function(err) { console.error('Quick scan fetch error:', err); });
+  }
+
+  // ── Central Pipeline Dispatcher ──
+  function renderDashboardWithData(d) {
+    if (!d) return;
+
+    // Manpower
+    var mp = document.getElementById('manpower');
+    if (mp) mp.textContent = d.manpower;
+
+    var tsBar = document.getElementById('sheetTsBar');
+    if (tsBar) tsBar.textContent = d.timestamp ? new Date(d.timestamp).toLocaleString() : '—';
+
+    var fs = document.getElementById('floorScan');
+    if (fs) {
+      fs.textContent = (d.floorScanCount !== undefined && d.floorScanCount !== null)
+        ? Number(d.floorScanCount).toLocaleString()
+        : '—';
+    }
+
+    // Availability Calculation
+    var hr = parseFloat(String(d.manpower).replace(/,/g, ''));
+    var spared = Number(d.wfTotal) || 0;
+    var avEl = document.getElementById('availability');
+    var avCard = document.getElementById('availCard');
+
+    if (avCard && avEl) {
+      avCard.classList.remove('avail-yellow', 'avail-lightgreen', 'avail-green');
+      if (isNaN(hr)) {
+        avEl.textContent = '—';
+      } else {
+        var pct = Math.round((hr - spared) / 205 * 100);
+        avEl.textContent = pct + '%';
+        avCard.classList.add(pct < 90 ? 'avail-yellow' : (pct < 100 ? 'avail-lightgreen' : 'avail-green'));
+      }
+    }
+
+    // Production Loss Summary & Table
+    var lossHead = document.getElementById('prodLossHead');
+    var lossBody = document.getElementById('prodLossBody');
+
+    if (lossHead && d.prodLossHeaders && d.prodLossHeaders.length > 0) {
+      lossHead.innerHTML = '<tr>' + d.prodLossHeaders.map(function(h){ return '<th>' + (h || '') + '</th>'; }).join('') + '</tr>';
+    }
+
+    if (lossBody && d.prodLossRecords && d.prodLossRecords.length > 0) {
+      lossBody.innerHTML = d.prodLossRecords.map(function(row) {
+        return '<tr>' + row.map(function(cell, idx) {
+          var cls = (idx === 6) ? 'cell-red' : '';
+          return '<td class="' + cls + '">' + (cell !== null && cell !== undefined ? cell : '') + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+    } else if (lossBody) {
+      lossBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#5c6890;padding:16px;">No production loss records found for the period</td></tr>';
+    }
+
+    // Load Plan
+    if (d.rowFound) {
+      document.getElementById('forwardResort').textContent = Number(d.forwardResort || 0).toLocaleString();
+      document.getElementById('rto').textContent           = Number(d.rto || 0).toLocaleString();
+      document.getElementById('inventoryLoadPlan').textContent = Number(d.inventoryLoadPlan).toLocaleString();
+      document.getElementById('ppmpLoadPlan').textContent      = Number(d.ppmpLoadPlan).toLocaleString();
+      document.getElementById('dayShiftPlan').textContent      = Number(d.dayShiftPlan).toLocaleString();
+      document.getElementById('nightShiftPlan').textContent    = Number(d.nightShiftPlan).toLocaleString();
+      document.getElementById('invDateLabel').textContent      = d.invDate;
+      document.getElementById('warnBox').textContent           = '';
+    } else {
+      ['inventoryLoadPlan', 'ppmpLoadPlan', 'dayShiftPlan', 'nightShiftPlan', 'forwardResort', 'rto'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.textContent = '—';
+      });
+      document.getElementById('warnBox').textContent = d.invDate ? 'No row for today (' + d.invDate + ')' : '';
+    }
+
+    // FTE Roster
+    if (d.fteColFound) {
+      renderFteList('dayList',   'dayCount',   d.fteDay     || []);
+      renderFteList('nightList', 'nightCount', d.fteNight   || []);
+      renderFteList('woList',    'woCount',    d.fteWeekOff || []);
+      renderFteList('leaveList', 'leaveCount', d.fteLeave   || []);
+      document.getElementById('fteWarn').textContent = '';
+    } else {
+      document.getElementById('fteWarn').textContent = d.fteError || "Today's date not found in FTE roster.";
+    }
+
+    // D-1 Delay
+    var badge = document.getElementById('ddDateBadge');
+    var label = document.getElementById('ddDateLabel');
+    if (d.ddRowFound) {
+      document.getElementById('ddOnTime').textContent  = d.ddOnTime;
+      document.getElementById('ddTotalDN').textContent = d.ddTotalDN;
+      renderDelay(d);
+      renderLaneChips('lanesChips030',  'lanesCount030',  d.ddLanes030  || []);
+      renderLaneChips('lanesChips3060', 'lanesCount3060', d.ddLanes3060 || []);
+      renderLaneChips('lanesChips6120', 'lanesCount6120', d.ddLanes6120 || []);
+      renderLaneChips('lanesChips120p', 'lanesCount120p', d.ddLanes120p || []);
+      document.getElementById('ddWarn').textContent = '';
+      if (badge && label) {
+        if (d.ddLabel === 'yesterday') {
+          badge.className = 'date-badge yesterday';
+          label.textContent = '✓ D-1 · ' + d.ddDateStr;
+        } else if (d.ddLabel === 'daybefore') {
+          badge.className = 'date-badge fallback';
+          label.textContent = '⚠ Yesterday unavailable — showing D-2: ' + d.ddDateStr;
+        } else {
+          badge.className = 'date-badge fallback';
+          label.textContent = '⚠ Showing latest available: ' + d.ddDateStr;
+        }
+      }
+    } else {
+      if (badge && label) {
+        badge.className = 'date-badge fallback';
+        label.textContent = '⚠ No data found';
+      }
+      document.getElementById('ddWarn').textContent = d.ddError || '';
+    }
+
+    // Specific Reports
+    renderHourly(d);
+    renderPpmp(d);
+    render3PlDod(d);
+    render12DcDetails(d);
+    renderFuncBreach(d);
+    renderHygieneReport(d);
+    renderRepacking(d);
+    renderFkmpSummary(d);
+    renderSpilloverDetails(d);
+    renderWfSparing(d);
+    renderPreAdhocPlan(d);
+    renderXdPendency(d);
+  }
+
+  // ── Live Data Polling Engine ──
+  function fetchData() {
+    if (isFetching || currentMode === 'HISTORICAL') return;
+    isFetching = true;
+    document.getElementById('fetchTs').textContent = 'Fetching…';
+    if (ring) ring.style.stroke = '#38bdf8';
+
+    fetch(API_URL + '?action=live')
+      .then(function(response) { return response.json(); })
+      .then(function(d) {
+        renderDashboardWithData(d);
+        document.getElementById('fetchTs').textContent = 'Updated ' + new Date().toLocaleTimeString();
+        document.getElementById('errorBox').textContent = '';
+        if (ring) ring.style.stroke = '#34d399';
+        isFetching = false;
+        countdown = INTERVAL;
+      })
+      .catch(function(err) {
+        document.getElementById('errorBox').innerHTML = '<div class="error-box">Error: ' + err.message + '</div>';
+        if (ring) ring.style.stroke = '#f87171';
+        isFetching = false;
+        countdown = INTERVAL;
+      });
+  }
+  
+  // ── Master Clock Timer (Auto-Refresh) ──
+  setInterval(function() {
+    if (isFetching || currentMode === 'HISTORICAL') return;
+    countdown--;
+    if (countdown <= 0) { 
+      countdown = INTERVAL; 
+      fetchData(); 
+    }
+    updateRing(countdown);
+  }, 1000);
+
+  // ── Global Document Startup ──
+  try { setSidebar(localStorage.getItem('scSidebar') === '1'); } catch (e) {}
+  updateRing(INTERVAL);
+  try { applyTheme(localStorage.getItem('scTheme') === 'light'); } catch (e) {}
+  fetchData();
+
+  // ── Global Click Listener for Sheets Cards & Charts ──
+  document.addEventListener('click', function(e) {
+    var card = e.target.closest('.clickable-card');
+    if (card) {
+      var url = card.getAttribute('data-url');
+      if (url) {
+        window.open(url, '_blank');
+      }
+    }
+  });
+</script>
