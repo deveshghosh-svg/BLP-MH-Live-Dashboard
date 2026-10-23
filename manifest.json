@@ -1,11 +1,17 @@
 {
   "name": "SC One View - Bilaspur MH",
-  "short_name": "SC One",
-  "start_url": "./index.html",
+  "short_name": "SC One View",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#0a0e1a",
   "theme_color": "#0a0e1a",
   "icons": [
+    {
+      "src": "app-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "app-icon.png",
       "sizes": "512x512",
