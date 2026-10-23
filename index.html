@@ -72,26 +72,41 @@
   <script>
     var splash = document.getElementById('splash-screen');
     var iframe = document.getElementById('app-frame');
+    var fallback = document.getElementById('ios-fallback');
     var gasUrl = "https://script.google.com/a/macros/flipkart.com/s/AKfycbxVxKiPcIumRmS0AEnCr2rYjOikk_a6qTRNC5NYPfLX627TqqIsy7-NEAuABnOqZBdiog/exec";
 
-    // 1. Load the URL dynamically after a slight delay to bypass iOS initial blockers
-    setTimeout(function() {
-      iframe.src = gasUrl;
-    }, 100);
+    // 1. Detect if the user is on an iOS device (iPhone/iPad)
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    // 2. Remove splash screen when iframe finishes loading
-    iframe.onload = function() {
-      splash.style.opacity = '0';
-      splash.style.visibility = 'hidden';
-      setTimeout(function() { splash.remove(); }, 500);
-    };
+    if (isIOS) {
+      // APPLE FIX: Do not attempt to load the iframe. It will fail.
+      // Instead, hide the spinner and show a native launch button.
+      document.querySelector('.spinner').style.display = 'none';
+      document.querySelector('.splash-text').textContent = 'Workspace Ready';
+      fallback.style.display = 'block';
+      
+      // Update the button text for iOS users
+      fallback.innerHTML = '<a href="' + gasUrl + '" style="display: block; padding: 14px 24px; background: #38bdf8; color: #0a0e1a; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: \'Inter\', sans-serif; text-align: center; box-shadow: 0 4px 12px rgba(56,189,248,0.4);">Launch Dashboard</a><p style="color: #8a96b8; font-size: 12px; margin-top: 15px; text-align: center; font-family: \'Inter\', sans-serif;">(Opens securely via Google Workspace)</p>';
+    } else {
+      // ANDROID / DESKTOP: Load normally via iframe
+      setTimeout(function() {
+        iframe.src = gasUrl;
+      }, 100);
 
-    // 3. FAIL-SAFE: Show fallback button if iOS permanently blocks the iframe load
-    setTimeout(function() {
-      document.getElementById('ios-fallback').style.display = 'block';
-    }, 5000);
+      iframe.onload = function() {
+        splash.style.opacity = '0';
+        splash.style.visibility = 'hidden';
+        setTimeout(function() { splash.remove(); }, 500);
+      };
 
-    // Register Service Worker safely
+      // Fail-safe for slow connections
+      setTimeout(function() {
+        if (splash.style.opacity !== '0') {
+          fallback.style.display = 'block';
+        }
+      }, 6000);
+    }
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(err) {});
     }
