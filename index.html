@@ -1,25 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  
-  <!-- iOS Safari Native App Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SC One View">
-  
-  <!-- Android Chrome Native App Tags -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0a0e1a">
 
-  <link rel="manifest" href="manifest.json">
-  <!-- Custom App Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="app-icon.png">
   <link rel="icon" type="image/png" sizes="512x512" href="app-icon.png">
   <link rel="apple-touch-icon" href="app-icon.png">
+  <link rel="manifest" href="manifest.json">
 
-  <title>SC One View - Bilaspur MH</title>
+  <title>SC One View</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { 
@@ -27,94 +22,79 @@
       height: 100%; 
       overflow: hidden; 
       background: #0a0e1a; 
-      /* Prevents pull-to-refresh on mobile */
       overscroll-behavior-y: none; 
       -webkit-overflow-scrolling: touch; 
     }
     iframe {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
       border: none;
     }
-    
-
-    /* ── Splash Screen CSS ── */
     #splash-screen {
-      position: fixed;
-      inset: 0;
-      background: #0a0e1a;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      position: fixed; inset: 0; background: #0a0e1a;
+      z-index: 9999; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       transition: opacity 0.5s ease, visibility 0.5s ease;
     }
     .spinner {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border: 3px solid rgba(56, 189, 248, 0.2);
-      border-top-color: #38bdf8;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
+      border-top-color: #38bdf8; border-radius: 50%;
+      animation: spin 1s linear infinite; margin-bottom: 20px;
     }
     .splash-text {
-      color: #38bdf8;
-      font-family: 'Inter', sans-serif;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      font-size: 14px;
-      text-transform: uppercase;
+      color: #38bdf8; font-family: 'Inter', sans-serif;
+      font-weight: 600; letter-spacing: 0.1em;
+      font-size: 14px; text-transform: uppercase;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <!-- Splash Screen Overlay -->
   <div id="splash-screen">
     <div class="spinner"></div>
     <div class="splash-text">Loading Workspace...</div>
+    <div id="ios-fallback" style="display: none; margin-top: 30px;">
+      <a href="https://script.google.com/a/macros/flipkart.com/s/AKfycbxVxKiPcIumRmS0AEnCr2rYjOikk_a6qTRNC5NYPfLX627TqqIsy7-NEAuABnOqZBdiog/exec" target="_blank" style="padding: 10px 20px; background: #38bdf8; color: #0a0e1a; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: 'Inter', sans-serif;">Open in Safari to Authenticate</a>
+    </div>
   </div>
 
-  <!-- NEW: Fallback login button for iOS strict sandboxes -->
-    <a href="https://script.google.com/a/macros/flipkart.com/s/AKfycbxVxKiPcIumRmS0AEnCr2rYjOikk_a6qTRNC5NYPfLX627TqqIsy7-NEAuABnOqZBdiog/exec" target="_blank" style="margin-top: 30px; padding: 10px 20px; background: #38bdf8; color: #0a0e1a; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: 'Inter', sans-serif;">If screen stays blank, tap here to authenticate</a>
-  </div>
-
+  <!-- NEW: Added Sandbox permissions to allow iOS redirects -->
   <iframe 
-  id="app-frame"
-  src="https://script.google.com/macros/s/AKfycbxVxKiPcIumRmS0AEnCr2rYjOikk_a6qTRNC5NYPfLX627TqqIsy7-NEAuABnOqZBdiog/exec" 
-  allow="clipboard-read; clipboard-write; fullscreen"
-  allowfullscreen="true">
-</iframe>
+    id="app-frame"
+    sandbox="allow-top-navigation allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+    allow="clipboard-read; clipboard-write; fullscreen"
+    allowfullscreen="true">
+  </iframe>
 
-  <!-- ── Splash Screen Removal Script ── -->
-  <!-- ── Service Worker & Splash Screen Script ── -->
   <script>
-    // 1. Register Service Worker to enable Android "Install"
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(function(registration) {
-        console.log('ServiceWorker registration successful');
-      }).catch(function(err) {
-        console.log('ServiceWorker registration failed: ', err);
-      });
-    }
+    var splash = document.getElementById('splash-screen');
+    var iframe = document.getElementById('app-frame');
+    var gasUrl = "https://script.google.com/a/macros/flipkart.com/s/AKfycbxVxKiPcIumRmS0AEnCr2rYjOikk_a6qTRNC5NYPfLX627TqqIsy7-NEAuABnOqZBdiog/exec";
 
-    // 2. Remove splash screen when iframe loads
-    document.getElementById('app-frame').onload = function() {
-      var splash = document.getElementById('splash-screen');
+    // 1. Load the URL dynamically after a slight delay to bypass iOS initial blockers
+    setTimeout(function() {
+      iframe.src = gasUrl;
+    }, 100);
+
+    // 2. Remove splash screen when iframe finishes loading
+    iframe.onload = function() {
       splash.style.opacity = '0';
       splash.style.visibility = 'hidden';
-      setTimeout(function() {
-        splash.remove();
-      }, 500);
+      setTimeout(function() { splash.remove(); }, 500);
     };
+
+    // 3. FAIL-SAFE: Show fallback button if iOS permanently blocks the iframe load
+    setTimeout(function() {
+      document.getElementById('ios-fallback').style.display = 'block';
+    }, 5000);
+
+    // Register Service Worker safely
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(function(err) {});
+    }
   </script>
 </body>
 </html>
