@@ -2,25 +2,100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- iOS Safari Native App Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SC One View">
+  
+  <!-- Android Chrome Native App Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0a0e1a">
+
+  <!-- Custom App Icons -->
+  <link rel="icon" type="image/png" sizes="512x512" href="app-icon.png">
+  <link rel="apple-touch-icon" href="app-icon.png">
+
   <title>SC One View - Bilaspur MH</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e1a; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden; 
+      background: #0a0e1a; 
+      overscroll-behavior-y: none; 
+    }
     iframe {
       width: 100%;
       height: 100%;
       border: none;
       display: block;
     }
+
+    /* ── Splash Screen CSS ── */
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      background: #0a0e1a;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    .splash-text {
+      color: #38bdf8;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      font-size: 14px;
+      text-transform: uppercase;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- Splash Screen Overlay -->
+  <div id="splash-screen">
+    <div class="spinner"></div>
+    <div class="splash-text">Loading Workspace...</div>
+  </div>
+
   <iframe 
+    id="app-frame"
     src="https://script.google.com/a/macros/flipkart.com/s/AKfycbxVxKiPcIumRmS0AEnCr2rYjOikk_a6qTRNC5NYPfLX627TqqIsy7-NEAuABnOqZBdiog/exec" 
     allow="clipboard-read; clipboard-write; fullscreen"
-    allowfullscreen="true"
-    loading="lazy">
+    allowfullscreen="true">
   </iframe>
+
+  <!-- ── Splash Screen Removal Script ── -->
+  <script>
+    // Wait for the Google Apps Script iframe to finish loading completely
+    document.getElementById('app-frame').onload = function() {
+      var splash = document.getElementById('splash-screen');
+      // Fade out
+      splash.style.opacity = '0';
+      splash.style.visibility = 'hidden';
+      // Remove from DOM after fade completes
+      setTimeout(function() {
+        splash.remove();
+      }, 500);
+    };
+  </script>
 </body>
 </html>
