@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   
@@ -13,6 +14,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0a0e1a">
 
+  <link rel="manifest" href="manifest.json">
   <!-- Custom App Icons -->
   <link rel="icon" type="image/png" sizes="512x512" href="app-icon.png">
   <link rel="apple-touch-icon" href="app-icon.png">
@@ -84,14 +86,22 @@
   </iframe>
 
   <!-- ── Splash Screen Removal Script ── -->
+  <!-- ── Service Worker & Splash Screen Script ── -->
   <script>
-    // Wait for the Google Apps Script iframe to finish loading completely
+    // 1. Register Service Worker to enable Android "Install"
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(function(registration) {
+        console.log('ServiceWorker registration successful');
+      }).catch(function(err) {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+    }
+
+    // 2. Remove splash screen when iframe loads
     document.getElementById('app-frame').onload = function() {
       var splash = document.getElementById('splash-screen');
-      // Fade out
       splash.style.opacity = '0';
       splash.style.visibility = 'hidden';
-      // Remove from DOM after fade completes
       setTimeout(function() {
         splash.remove();
       }, 500);
